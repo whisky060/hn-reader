@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/andrea/Projects/hn-reader/build/cmake_install.cmake",
+		"/home/andrea/Projects/hn-reader/build/_deps/ftxui-build/cmake_install.cmake",
+		"/home/andrea/Projects/hn-reader/build/_deps/ftxui-build/examples/cmake_install.cmake",
+		"/home/andrea/Projects/hn-reader/build/_deps/ftxui-build/doc/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

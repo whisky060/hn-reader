@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/andrea/Projects/hn-reader/build/_deps/ftxui-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
