@@ -2,21 +2,26 @@
 
 
 AppModel::AppModel() {
-
+   this->news_list = {
+      "entry 1",
+      "entry 2",
+      "entry 3",
+      "entry 1",
+      "entry 2",
+      "entry 3",
+      "entry 1",
+      "entry 2",
+      "entry 3",
+      "entry 1",
+      "entry 2",
+      "entry 3",
+      "entry 1",
+      "entry 2",
+      "entry 3",
+    };
 }
 
 AppModel::~AppModel() {
 
 }
 
-void AppModel::initialize() {
-    // Initialize the application model here
-}
-
-void AppModel::update() {
-    // Update the application model here
-}
-
-void AppModel::shutdown() {
-    // Clean up resources and shutdown the application model here
-}

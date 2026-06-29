@@ -1,26 +1,16 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/app.hpp>
 #include <ftxui/dom/elements.hpp>
- 
+#include <memory>
+#include "controller/app_controller.hpp"
+#include "model/app_model.hpp" 
+
 int main() {
   using namespace ftxui;
- 
-  std::vector<std::string> entries = {
-      "Entry 1",
-      "Entry 2",
-      "Entry 3",
-  };
-  int selected = 0;
- 
-  // Create a menu component
-  auto menu = Menu(&entries, &selected);
- 
-  // You can decorate components using the pipe operator.
-  auto component = menu | border;
- 
-  // Start the main loop
-  auto app = App::TerminalOutput();
-  app.Loop(component);
- 
-  return 0;
+  App app = App::FullscreenPrimaryScreen();
+  auto model = std::make_shared<AppModel>();
+  auto controller = Make<AppController>(model);
+  app.Loop(controller);
+  
+  return EXIT_SUCCESS;
 }
