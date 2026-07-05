@@ -19,6 +19,9 @@ AppModel::AppModel() {
       "entry 2",
       "entry 3",
     };
+    
+    this->client = new HNClient();
+    client->FetchToStories();
 }
 
 AppModel::~AppModel() {

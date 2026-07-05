@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-
+#include "HNClient.hpp"
 
 class AppModel {
     public:
@@ -14,7 +14,7 @@ class AppModel {
         std::vector<std::string> news_list;
 
     private:
-        // Add private member variables and methods here
+        HNClient* client = nullptr;
 };
 
 

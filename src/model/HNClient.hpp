@@ -2,25 +2,27 @@
 #define HMCLIENT_H
 
 #include <string>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <curl/websockets.h>
-#include <string>
+#include <nlohmann/json.hpp>
+#include <vector>
+#include <curl/curl.h>
+
+
+
+using namespace nlohmann;
+
 
 class HNClient {
     public:
         HNClient();
         ~HNClient();
-
-        void connect();
-        void close();
+        std::vector<long> FetchToStories();
+        //nlohmann::json FetchStory(long id);
         
     private:
-        int socket = -1;
-        SSL* ssl = nullptr;    
+        CURL* handle = nullptr;
+        const std::string top_story_url = "https://hacker-news.firebaseio.com/v0/topstories.json";
+        
+ 
 };
 
 
