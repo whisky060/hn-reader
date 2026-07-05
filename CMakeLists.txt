@@ -3,6 +3,8 @@ project(hn-reader VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(BUILD_SHARED_LIBS OFF)
+set(BUILD_STATIC_LIBS ON)
 
 include(FetchContent)
  
@@ -20,11 +22,20 @@ FetchContent_Declare(nlohmann
 
 FetchContent_MakeAvailable(nlohmann)
 
+
 FetchContent_Declare(curl
-    URL https://curl.se/download/curl-8.21.0.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP true
-    OVERRIDE_FIND_PACKAGE # this one
+URL https://curl.se/download/curl-8.21.0.tar.gz
+DOWNLOAD_EXTRACT_TIMESTAMP true
+OVERRIDE_FIND_PACKAGE # this one
 )
+
+if(WIN32)
+  set(CURL_USE_SCHANNEL ON)
+else()
+  set(CURL_USE_OPENSSL ON)
+endif()
+
+
 
 FetchContent_MakeAvailable(curl)
 find_package(curl) # probably with CONFIG REQUIRED
