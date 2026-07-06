@@ -23,7 +23,7 @@ class HNClient {
 
         CURL* handle = nullptr;
         const char* top_story_url = "https://hacker-news.firebaseio.com/v0/topstories.json\0";
-        const char* story_url_template = "https://hacker-news.firebaseio.com/v0/item/{id}.json?print=pretty";
+        
  
 };
 

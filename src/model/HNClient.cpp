@@ -28,6 +28,7 @@ std::vector<long> HNClient::FetchToStories(){
     if(handle==nullptr)
         // TODO make better error handling
         throw std::runtime_error("ERROR: during the initialization of curl");
+        
     CURLcode result;
     result = curl_easy_setopt(handle, CURLOPT_URL, this->top_story_url);
     if(result!=CURLE_OK)
@@ -59,8 +60,8 @@ std::vector<long> HNClient::FetchToStories(){
     }
 
     curl_easy_cleanup(handle);
-
-    std::vector<long> id_list = move(CreateIdList(result_sting));
+    std::cout << result_sting << std::endl;
+    std::vector<long> id_list = std::move(CreateIdList(result_sting));
     
     return id_list;
 }
@@ -83,12 +84,13 @@ std::vector<long> HNClient::CreateIdList(const std::string& json_data) {
     if(handle==nullptr)
         // TODO make better error handling
         throw std::runtime_error("ERROR: during the initialization of curl");
+
     CURLcode result;
-    result = curl_easy_setopt(handle, CURLOPT_URL, "https://hacker-news.firebaseio.com/v0/item/" + std::to_string(id) + ".json?print=pretty");
+    result = curl_easy_setopt(handle, CURLOPT_URL, (const char*)((std::string)"https://hacker-news.firebaseio.com/v0/item/" + std::to_string(id) + ".json?print=pretty\0").c_str());
     if(result!=CURLE_OK)
         throw std::runtime_error("Error in setting CURLOPT_URL");
 
-    curl_easy_setopt(handle, CURLOPT_CA_CACHE_TIMEOUT, 604800L);
+   
     result = curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, WriteCallback);
     if(result!=CURLE_OK){
         curl_easy_cleanup(handle);
@@ -112,6 +114,9 @@ std::vector<long> HNClient::CreateIdList(const std::string& json_data) {
         curl_easy_cleanup(handle);
         throw std::runtime_error("Error in fetching data from Hacker News: " + std::string(curl_easy_strerror(result)));
     }
+
+    std::cout << result_sting << std::endl;
+
 
     curl_easy_cleanup(handle);
 

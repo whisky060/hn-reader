@@ -20,11 +20,14 @@ AppModel::AppModel() {
       "entry 3",
     };
     
-    this->client = new HNClient();
-    client->FetchToStories();
+    client = new HNClient();
+    shown_ids = new ShownIdWindow(); 
+    shown_ids->ids = std::move(client->FetchToStories());
+   
 }
 
 AppModel::~AppModel() {
-
+   delete client;
+   delete shown_ids;
 }
 
