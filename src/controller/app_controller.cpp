@@ -20,6 +20,8 @@ Element AppController::OnRender()  {
 
 bool AppController::OnEvent(Event event) {
     // Handle events 
+
+    
     return curr_view->OnEvent(event); 
 }
  

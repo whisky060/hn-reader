@@ -28,7 +28,6 @@ public:
 private:
     Component curr_view;
     std::shared_ptr<AppModel> model;
-
 };
 
 

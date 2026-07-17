@@ -21,8 +21,8 @@ AppModel::AppModel() {
     };
     
     client = new HNClient();
-    shown_ids = new ShownIdWindow(); 
-    shown_ids->ids = std::move(client->FetchToStories());
+    shown_ids = new ShownIdWindow(FetchTopStories());
+   
    
 }
 
@@ -31,3 +31,11 @@ AppModel::~AppModel() {
    delete shown_ids;
 }
 
+std::vector<long> AppModel::FetchTopStories(){
+   return std::move(client->FetchToStories());
+}
+
+void AppModel::FetchStory(long id){
+   nlohmann::json story = client->FetchStory(id);
+   // Process the story as needed
+}

@@ -16,7 +16,7 @@ class HNClient {
         HNClient();
         ~HNClient();
         std::vector<long> FetchToStories();
-        nlohmann::json FetchStory(long id);
+        nlohmann::json FetchID(long id);
         
     private:
         std::vector<long> CreateIdList(const std::string& json_data);

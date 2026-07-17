@@ -77,7 +77,7 @@ std::vector<long> HNClient::CreateIdList(const std::string& json_data) {
 }
 
 
- nlohmann::json HNClient::FetchStory(long id){
+ nlohmann::json HNClient::FetchID(long id){
     this->handle = curl_easy_init();
     std::string result_sting = "";
 
@@ -114,9 +114,6 @@ std::vector<long> HNClient::CreateIdList(const std::string& json_data) {
         curl_easy_cleanup(handle);
         throw std::runtime_error("Error in fetching data from Hacker News: " + std::string(curl_easy_strerror(result)));
     }
-
-    std::cout << result_sting << std::endl;
-
 
     curl_easy_cleanup(handle);
 
