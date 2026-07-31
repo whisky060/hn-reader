@@ -2,6 +2,7 @@
 #define DATA_BLOCK_H
 
 #include <nlohmann/json.hpp>
+#include "HNClient.hpp"
 #include <cstdint>
 
 enum class DataBlockType : uint8_t
@@ -12,99 +13,107 @@ enum class DataBlockType : uint8_t
 };
 
 
-/*
-    Abstract base class for all data blocks
-*/
-class AbstractDataBlock
-{
-    public:
-        AbstractDataBlock(DataBlockType type);
-        virtual ~AbstractDataBlock() = default;
-        DataBlockType getType() const { return type; }
-    private:
-        DataBlockType type;
-
-
-};
-
 // contains all informations about a story
-class StoryDataBlock : public AbstractDataBlock
+struct ArticleDataBlock
 {
-    public:
-        StoryDataBlock(nlohmann::json json_data);
-        ~StoryDataBlock();
-        const std::string& getAuthor() const { return author_; }
-        unsigned long getDescendants() const { return descendants_; }
-        unsigned long getId() const { return id_; }
-        const std::vector<unsigned long>& getComments() const { return comments_; }
-        int getScore() const {return score_;}
-        unsigned long getTime() const { return time_; }
-        const std::string& getTitle() const { return title_; }
-        const std::string& getUrl() const { return url_; }
-    private:
+        DataBlockType type_;
         std::string author_;
         unsigned long descendants_;
-        unsigned long id_;
-        std::vector<unsigned long> comments_;
+        ID id_;
+        std::vector<ID> comments_;
         int score_;
         unsigned long time_;
         std::string title_;
         std::string url_;
 
+        ArticleDataBlock() = default;
+        ArticleDataBlock(DataBlockType type,
+                        std::string author,
+                        unsigned long descendants,
+                        ID id,
+                        std::vector<ID> comments,
+                        int score,
+                        unsigned long time,
+                        std::string title,
+                        std::string url
+                        ):
+                         type_(type),
+                         author_(author),
+                         descendants_(descendants),
+                         id_(id),
+                         score_(score),
+                         time_(time),
+                         title_(title),
+                         url_(url)
+        {
+                comments_ = move(comments);
+        }
 };
 
 // contains all information about a comment
-class CommentDataBlock : public AbstractDataBlock
+struct CommentDataBlock
 {
-    public:
-        CommentDataBlock(nlohmann::json json_data);
-        ~CommentDataBlock();
-        const std::string& getAuthor() const { return author_; }
-        unsigned long getId() const { return id_; }
-        const std::vector<unsigned long>& getComments() const { return comments_; }
-        unsigned long getParent() const { return parent_; }
-        const std::string& getText() const { return text_; }
-    private:
+        DataBlockType type_;
         std::string author_;
-        unsigned long id_;
-        std::vector<unsigned long> comments_;
-        unsigned long parent_;
+        ID id_;
+        std::vector<ID> comments_;
+        ID parent_;
         std::string text_;
         unsigned long time_;
+
+        CommentDataBlock() = default;
+        CommentDataBlock(DataBlockType type,
+                        std::string author,
+                        ID id,
+                        std::vector<ID> comments,
+                        ID parent,
+                        std::string text,
+                        unsigned long time
+                        ): 
+                        type_(type),
+                        author_(author),
+                        id_(id),
+                        parent_(parent),
+                        text_(text),
+                        time_(time)
+        {
+                comments_ = move(comments);
+        }
+
 };
 
 
 // contains all information about a job listing
 // https://hacker-news.firebaseio.com/v0/jobstories.json
-class JobDataBlock : public AbstractDataBlock 
+struct JobDataBlock
 {
-    public:
-        JobDataBlock(nlohmann::json json_data);
-        ~JobDataBlock();
-        const std::string& getAuthor() const { return author_; }
-        unsigned long getId() const { return id_; }
-        int getScore() const { return score_; }
-        unsigned long getTime() const { return time_; }
-        const std::string& getTitle() const { return title_; }
-        const std::string& getUrl() const { return url_; } 
-    private:
+        DataBlockType type_;
         std::string author_;
-        unsigned long id_;
+        ID id_;
         int score_;
         unsigned long time_;
         std::string title_;
         std::string url_;
+
+        JobDataBlock() = default;
+        JobDataBlock(DataBlockType type,
+                     std::string author,
+                     ID id,
+                     int score,
+                     unsigned long time,
+                     std::string title,
+                     std::string url
+                     ):
+                     type_(type),
+                     author_(author),
+                     id_(id),
+                     score_(score),
+                     time_(time),
+                     title_(title),
+                     url_(url)
+        {
+        }
+
 };
-
-
-
-
-
-
-
-
-
-
-
 
 #endif // DATA_BLOCK_H

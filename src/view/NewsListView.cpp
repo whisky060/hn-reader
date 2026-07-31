@@ -6,6 +6,9 @@ using namespace ftxui;
 Component NewsListView() {
     class NewsList : public ComponentBase
     {
+        
+
+
     };
 
     return Make<NewsList>();

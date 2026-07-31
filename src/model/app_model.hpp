@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "HNClient.hpp"
+#include "model/DataBlock.hpp"
 
 // Class to hold the state of the shown IDs window
 class ShownIdWindow{
@@ -31,8 +32,10 @@ class AppModel {
         AppModel();
         ~AppModel();
 
-        std::vector<long> FetchTopStories();
-        void FetchStory(long id);
+        std::vector<ID> FetchTopStories();
+        void FetchStory(ID id);
+        void FetchComment(ID id);
+        void FetchJob(ID id);
 
         int selected = 0;
         std::vector<std::string> news_list;
@@ -41,6 +44,9 @@ class AppModel {
         
         HNClient* client = nullptr;
         ShownIdWindow* shown_ids;
+        std::shared_ptr<std::vector<JobDataBlock>> job_list_;
+        std::shared_ptr<std::vector<CommentDataBlock>> comments_;
+        std::shared_ptr<std::vector<ArticleDataBlock>> articles_list_;
 };
 
 

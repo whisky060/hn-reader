@@ -5,6 +5,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/event.hpp>
+#include "view/template.hpp"
 #include "model/app_model.hpp"
 #include <memory>
 
@@ -26,8 +27,11 @@ public:
     bool OnEvent(Event event);
 
 private:
+    void FetchArticles(){ model_->FetchTopStories(); };
+
     Component curr_view;
-    std::shared_ptr<AppModel> model;
+    std::shared_ptr<AppModel> model_;
+    Component template_;
 };
 
 

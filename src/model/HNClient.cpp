@@ -21,7 +21,7 @@ HNClient::~HNClient(){
     curl_global_cleanup();
 }
 
-std::vector<long> HNClient::FetchToStories(){
+std::vector<ID> HNClient::FetchToStories(){
     this->handle = curl_easy_init();
     std::string result_sting = "";
 
@@ -61,23 +61,23 @@ std::vector<long> HNClient::FetchToStories(){
 
     curl_easy_cleanup(handle);
     std::cout << result_sting << std::endl;
-    std::vector<long> id_list = std::move(CreateIdList(result_sting));
+    std::vector<ID> id_list = std::move(CreateIdList(result_sting));
     
     return id_list;
 }
 
-std::vector<long> HNClient::CreateIdList(const std::string& json_data) {
+std::vector<ID> HNClient::CreateIdList(const std::string& json_data) {
     nlohmann::json parsed_json = nlohmann::json::parse(json_data);
-    std::vector<long> id_list;
+    std::vector<ID> id_list;
     for(const auto& id : parsed_json){
-        id_list.push_back(id.get<long>());  
+        id_list.push_back(id.get<ID>());  
     }
   
     return id_list;
 }
 
 
- nlohmann::json HNClient::FetchID(long id){
+ nlohmann::json HNClient::FetchID(ID id){
     this->handle = curl_easy_init();
     std::string result_sting = "";
 
