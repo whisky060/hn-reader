@@ -2,24 +2,9 @@
 
 AppModel::AppModel()
 {
-   this->news_list = {
-       "entry 1",
-       "entry 2",
-       "entry 3",
-       "entry 1",
-       "entry 2",
-       "entry 3",
-       "entry 1",
-       "entry 2",
-       "entry 3",
-       "entry 1",
-       "entry 2",
-       "entry 3",
-       "entry 1",
-       "entry 2",
-       "entry 3",
-   };
-
+   articles_list_ = std::make_shared<std::vector<ArticleDataBlock>>();
+   comments_ = std::make_shared<std::vector<CommentDataBlock>>();
+   job_list_ = std::make_shared<std::vector<JobDataBlock>>();
    client = new HNClient();
    auto story_ids = FetchTopStories();
    for(auto& id : story_ids){
@@ -44,14 +29,14 @@ void AppModel::FetchStory(ID id)
 
    auto article_block = ArticleDataBlock(
        DataBlockType::Story,
-       story["by"].get<std::string>(),
-       story["descendants"].get<unsigned long>(),
-       story["id"].get<ID>(),
-       story["kids"].get<std::vector<ID>>(),
-       story["score"].get<int>(),
-       story["time"].get<unsigned long>(),
-       story["title"].get<std::string>(),
-       story["url"].get<std::string>());
+       story.value("by", ""),
+       story.value("descendants", 0),
+       story.value("id", 0),
+       story.value("kids", std::vector<ID>{}),
+       story.value("score", 0),
+       story.value("time", 0),
+       story.value("title", ""),
+       story.value("url", ""));
 
    this->articles_list_->push_back(article_block);
 }

@@ -27,7 +27,7 @@ private:
     Component main_view_;
 };
 
-Component BaseTemplate(Component main_view)
+inline Component BaseTemplate(Component main_view)
 {
 
     class ImplBaseTemplate : public AbstractTemplate

@@ -1,5 +1,5 @@
-#ifndef ARTICLELISTVIEW.hpp
-#define ARTICLELISTVIEW .hpp
+#ifndef ARTICLELISTVIEW_H
+#define ARTICLELISTVIEW_H
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
@@ -11,21 +11,21 @@ using namespace ftxui;
 class ArticleEntry : public ComponentBase
 {
 public:
-    ArticleEntry(std::shared_ptr<ArticleDataBlock> article) : article_(article) {};
+    ArticleEntry(ArticleDataBlock article) : article_(article) {};
     Element Render()
     {
         auto content = hbox({
             vbox({
-                text(article_->title_),
+                text(article_.title_),
                 separator(),
                 hbox({
-                    text(article_->author_),
+                    text(article_.author_),
                     separator(),
-                    text(std::to_string(article_->time_)),
+                    text(std::to_string(article_.time_)),
                     separator(),
-                    text(std::to_string(article_->score_)),
+                    text(std::to_string(article_.score_)),
                     separator(),
-                    text(std::to_string(article_->descendants_))
+                    text(std::to_string(article_.descendants_))
                 })
             }),
         });
@@ -39,33 +39,30 @@ public:
     }
 
 private:
-    std::shared_ptr<ArticleDataBlock> article_;
+    ArticleDataBlock article_;
 };
 
-Component ArticleList()
+Component ArticleList(std::shared_ptr<std::vector<ArticleDataBlock>> articles)
 {
     class ImplArticleList : public ComponentBase
     {
     public:
         ImplArticleList(std::shared_ptr<std::vector<ArticleDataBlock>> articles) {
+            articles_ = Container::Vertical({});
             for(auto& article : *articles){
-                    articles_->push_back(Make<ArticleEntry>(article));                               
+                articles_->Add(Make<ArticleEntry>(article));
             }
         };
         Element Render()
         {
-            auto content =  vbox(articles_);
-            
-            
-
-            return content;
+            return articles_->Render();
         }
 
     private:
-        std::shared_ptr<std::vector<Component>> articles_;
+       Component articles_;
     };
 
-    return Make<ImplArticleList>();
+    return Make<ImplArticleList>(articles);
 }
 
 #endif

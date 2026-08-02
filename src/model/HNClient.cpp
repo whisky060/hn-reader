@@ -60,7 +60,6 @@ std::vector<ID> HNClient::FetchToStories(){
     }
 
     curl_easy_cleanup(handle);
-    std::cout << result_sting << std::endl;
     std::vector<ID> id_list = std::move(CreateIdList(result_sting));
     
     return id_list;

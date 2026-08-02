@@ -1,5 +1,5 @@
 #ifndef HNCLIENT_H
-#define HMCLIENT_H
+#define HNCLIENT_H
 
 #include <string>
 #include <nlohmann/json.hpp>

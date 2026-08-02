@@ -2,18 +2,14 @@
 #include "app_controller.hpp"
 #include "view/news_list_view.hpp"
 #include "view/Template.hpp"
+#include "view/ArticleListView.hpp"
 #include <vector>
 #include <string>
 
-AppController::AppController(std::shared_ptr<AppModel> model) :
-ComponentBase(),
-model_(model),
-template_(BaseTemplate(Renderer([]{return text("asdas");})))
+AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
 {
-    curr_view = NewsListView(model_);
-    this->Add(curr_view);  
-    
-    this->FetchArticles();
+    model_ = model;
+    template_ = BaseTemplate(ArticleList(model_->GetArticlesList()));
 }
 
 AppController::~AppController() {
@@ -26,9 +22,7 @@ Element AppController::OnRender()  {
 }
 
 bool AppController::OnEvent(Event event) {
-    // Handle events 
-
-    
+    // Handle events    
     return template_->OnEvent(event); 
 }
  
