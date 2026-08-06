@@ -6,29 +6,24 @@
 #include <ftxui/component/event.hpp>
 #include "model/DataBlock.hpp"
 
-using namespace ftxui;
-
-class ArticleEntry : public ComponentBase
+class ArticleEntry : public ftxui::ComponentBase
 {
 public:
-    ArticleEntry(ArticleDataBlock article) : article_(article) {};
-    Element Render()
+    ArticleEntry(StoryDataBlock article) : article_(article) {};
+
+    ftxui::Element OnRender()
     {
-        auto content = hbox({
-            vbox({
-                text(article_.title_),
-                separator(),
-                hbox({
-                    text(article_.author_),
-                    separator(),
-                    text(std::to_string(article_.time_)),
-                    separator(),
-                    text(std::to_string(article_.score_)),
-                    separator(),
-                    text(std::to_string(article_.descendants_))
-                })
-            }),
-        });
+        auto content = ftxui::vbox({ftxui::text(article_.title_) | ftxui::notflex,
+                                    ftxui::separator(),
+                                    ftxui::hbox({ftxui::text(article_.author_) | ftxui::notflex,
+                                                 ftxui::separator(),
+                                                 ftxui::text(std::to_string(article_.time_)) | ftxui::notflex,
+                                                 ftxui::separator(),
+                                                 ftxui::text(std::to_string(article_.score_)) | ftxui::notflex,
+                                                 ftxui::separator(),
+                                                 ftxui::text(std::to_string(article_.descendants_)) | ftxui::notflex}),
+                                    ftxui::separator(),
+                                    ftxui::separatorEmpty()}) | ftxui::notflex;
 
         // Add visual cues when highlighted by keyboard navigation
         if (Focused())
@@ -38,31 +33,56 @@ public:
         return content;
     }
 
+    bool OnEvent(ftxui::Event event)
+    {
+        
+        if(ftxui::ComponentBase::OnEvent(event))
+        {
+            return true;
+        } 
+
+        return false;
+    }
+
 private:
-    ArticleDataBlock article_;
+    StoryDataBlock article_;
 };
 
-Component ArticleList(std::shared_ptr<std::vector<ArticleDataBlock>> articles)
+ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles)
 {
-    class ImplArticleList : public ComponentBase
+    class ImplArticleList : public ftxui::ComponentBase
     {
     public:
-        ImplArticleList(std::shared_ptr<std::vector<ArticleDataBlock>> articles) {
-            articles_ = Container::Vertical({});
-            for(auto& article : *articles){
-                articles_->Add(Make<ArticleEntry>(article));
-            }
-        };
-        Element Render()
+        ImplArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles)
         {
-            return articles_->Render();
+            articles_ = ftxui::Container::Vertical({});
+            for (auto &article : *articles)
+            {
+                articles_->Add(ftxui::Make<ArticleEntry>(article));
+            }
+            this->Add(articles_);
+        };
+        ftxui::Element OnRender()
+        {
+            return articles_->Render(); 
+        }
+
+        bool OnEvent(ftxui::Event event)
+        {   
+
+            if(ftxui::ComponentBase::OnEvent(event))
+            {
+                return true;
+            }
+
+            return false;
         }
 
     private:
-       Component articles_;
+        ftxui::Component articles_;
     };
 
-    return Make<ImplArticleList>(articles);
+    return ftxui::Make<ImplArticleList>(articles);
 }
 
 #endif

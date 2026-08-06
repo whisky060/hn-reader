@@ -6,7 +6,7 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/event.hpp>
 
-using namespace ftxui;
+
 
 /*
     returns a template made of: a bottom bar an at the center a view
@@ -15,39 +15,47 @@ using namespace ftxui;
 
 // implements the template in the bottom bar we have a clock (right) and a list of commands left
 
-class AbstractTemplate : public ComponentBase
+class AbstractTemplate : public ftxui::ComponentBase
 {
 
 public:
-    AbstractTemplate(Component main_view) : ComponentBase(), main_view_(main_view) {}
+    AbstractTemplate(ftxui::Component main_view) : ftxui::ComponentBase(), main_view_(main_view) {}
     virtual ~AbstractTemplate() = default;
-    virtual void ChangeView(Component new_view) = 0;
+    virtual void ChangeView(ftxui::Component new_view) = 0;
 
 private:
-    Component main_view_;
+    ftxui::Component main_view_;
 };
 
-inline Component BaseTemplate(Component main_view)
+inline ftxui::Component BaseTemplate(ftxui::Component main_view)
 {
 
     class ImplBaseTemplate : public AbstractTemplate
     {
     public:
-        ImplBaseTemplate(Component main_view) : AbstractTemplate(main_view)
+        ImplBaseTemplate(ftxui::Component main_view) : AbstractTemplate(main_view)
         {
-            Component button = Button("ctrl+p", [this]()
+            main_view_ = main_view;
+            ftxui::Component button = ftxui::Button("ctrl+p", [this]()
                                       { this->OpenCtrlP(); });
-            bottom_bar_ = Renderer([button]
-                                   { return hbox({button->Render()}); });
+            bottom_bar_ = ftxui::Renderer([button]
+                                   { return ftxui::hbox({button->Render()|ftxui::notflex,
+                                                        ftxui::filler()}) | ftxui::notflex;
+                                     });
+            this->Add(main_view_);
+            this->Add(bottom_bar_);
         }
 
-        Element OnRender() override
-        {
-            return vbox({main_view_->Render(),
-                         bottom_bar_->Render()});
+        ftxui::Element OnRender() 
+        {   
+            
+            return ftxui::vbox({
+                main_view_->Render()  | ftxui::vscroll_indicator | ftxui::frame | ftxui::flex ,
+                bottom_bar_->Render() | ftxui::notflex | ftxui::border
+            });
         }
 
-        void ChangeView(Component new_view)
+        void ChangeView(ftxui::Component new_view) override
         {
             main_view_ = new_view;
         }
@@ -56,21 +64,31 @@ inline Component BaseTemplate(Component main_view)
         {
         }
 
-        bool OnEvent(Event event) override
+        bool OnEvent(ftxui::Event event) 
         {
-            if (event == Event::CtrlP)
+            if (event == ftxui::Event::CtrlP)
             {
                 OpenCtrlP();
+                return true;
             }
 
-            return main_view_->OnEvent(event);
+            
+             if(ftxui::ComponentBase::OnEvent(event))
+             {
+                 return true;
+             }
+            
+
+            return false;
         }
 
+        
+
     private:
-        Component main_view_;
-        Component bottom_bar_;
+        ftxui::Component main_view_;
+        ftxui::Component bottom_bar_;
     };
-    return Make<ImplBaseTemplate>(main_view);
+    return ftxui::Make<ImplBaseTemplate>(main_view);
 }
 
 #endif

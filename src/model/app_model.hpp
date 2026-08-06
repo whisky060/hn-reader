@@ -38,7 +38,7 @@ class AppModel {
         void FetchJob(ID id);
         std::shared_ptr<std::vector<JobDataBlock>> GetJobList() const { return job_list_; }
         std::shared_ptr<std::vector<CommentDataBlock>> GetComments() const { return comments_; }
-        std::shared_ptr<std::vector<ArticleDataBlock>> GetArticlesList() const { return articles_list_; }
+        std::shared_ptr<std::vector<StoryDataBlock>> GetArticlesList() const { return articles_list_; }
 
         int selected = 0;
         std::vector<std::string> news_list;
@@ -49,7 +49,7 @@ class AppModel {
         ShownIdWindow* shown_ids;
         std::shared_ptr<std::vector<JobDataBlock>> job_list_;
         std::shared_ptr<std::vector<CommentDataBlock>> comments_;
-        std::shared_ptr<std::vector<ArticleDataBlock>> articles_list_;
+        std::shared_ptr<std::vector<StoryDataBlock>> articles_list_;
 };
 
 

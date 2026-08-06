@@ -14,7 +14,7 @@ enum class DataBlockType : uint8_t
 
 
 // contains all informations about a story
-struct ArticleDataBlock
+struct StoryDataBlock
 {
         DataBlockType type_;
         std::string author_;
@@ -26,8 +26,8 @@ struct ArticleDataBlock
         std::string title_;
         std::string url_;
 
-        ArticleDataBlock() = default;
-        ArticleDataBlock(DataBlockType type,
+        StoryDataBlock() = default;
+        StoryDataBlock(DataBlockType type,
                         std::string author,
                         unsigned long descendants,
                         ID id,

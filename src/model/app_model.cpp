@@ -2,13 +2,13 @@
 
 AppModel::AppModel()
 {
-   articles_list_ = std::make_shared<std::vector<ArticleDataBlock>>();
+   articles_list_ = std::make_shared<std::vector<StoryDataBlock>>();
    comments_ = std::make_shared<std::vector<CommentDataBlock>>();
    job_list_ = std::make_shared<std::vector<JobDataBlock>>();
    client = new HNClient();
    auto story_ids = FetchTopStories();
-   for(auto& id : story_ids){
-      FetchStory(id);
+   for(int i = 0; i < 25; i++){
+      FetchStory(story_ids[i]);
    }
 }
 
@@ -27,7 +27,7 @@ void AppModel::FetchStory(ID id)
 {
    nlohmann::json story = client->FetchID(id);
 
-   auto article_block = ArticleDataBlock(
+   auto article_block = StoryDataBlock(
        DataBlockType::Story,
        story.value("by", ""),
        story.value("descendants", 0),
