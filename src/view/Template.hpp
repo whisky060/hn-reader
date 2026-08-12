@@ -46,7 +46,7 @@ inline ftxui::Component BaseTemplate(ftxui::Component main_view)
             this->Add(bottom_bar_);
         }
 
-        ftxui::Element OnRender() 
+        ftxui::Element OnRender() override
         {   
             
             return ftxui::vbox({
@@ -64,7 +64,7 @@ inline ftxui::Component BaseTemplate(ftxui::Component main_view)
         {
         }
 
-        bool OnEvent(ftxui::Event event) 
+        bool OnEvent(ftxui::Event event) override
         {
             if (event == ftxui::Event::CtrlP)
             {

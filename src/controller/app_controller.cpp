@@ -17,12 +17,12 @@ AppController::~AppController() {
 
 }
 
-Element AppController::OnRender()  {
+Element AppController::OnRender() {
     // Render the component
     return template_->Render();
 }
 
-bool AppController::OnEvent(Event event) {
+bool AppController::OnEvent(Event event)  {
     // Handle events    
     
     

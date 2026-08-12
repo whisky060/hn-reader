@@ -23,8 +23,8 @@ class AppController : public ComponentBase {
 public:
     AppController(std::shared_ptr<AppModel> model);
     ~AppController();
-    Element OnRender();
-    bool OnEvent(Event event);
+    Element OnRender() override;
+    bool OnEvent(Event event) override;
 
 private:
     void FetchArticles(){ model_->FetchTopStories(); };

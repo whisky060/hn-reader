@@ -11,7 +11,7 @@ class ArticleEntry : public ftxui::ComponentBase
 public:
     ArticleEntry(StoryDataBlock article) : article_(article) {};
 
-    ftxui::Element OnRender()
+    ftxui::Element OnRender() override
     {
         auto content = ftxui::vbox({ftxui::text(article_.title_) | ftxui::notflex,
                                     ftxui::separator(),
@@ -28,12 +28,12 @@ public:
         // Add visual cues when highlighted by keyboard navigation
         if (Focused())
         {
-            content = content | inverted;
+            content = content | inverted | focus;
         }
         return content;
     }
 
-    bool OnEvent(ftxui::Event event)
+    bool OnEvent(ftxui::Event event) override
     {
         
         if(ftxui::ComponentBase::OnEvent(event))
@@ -42,6 +42,11 @@ public:
         } 
 
         return false;
+    }
+
+    bool  Focusable() const override
+    {
+        return true;
     }
 
 private:
@@ -62,12 +67,12 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
             }
             this->Add(articles_);
         };
-        ftxui::Element OnRender()
+        ftxui::Element OnRender() override
         {
             return articles_->Render(); 
         }
 
-        bool OnEvent(ftxui::Event event)
+        bool OnEvent(ftxui::Event event) override
         {   
 
             if(ftxui::ComponentBase::OnEvent(event))
