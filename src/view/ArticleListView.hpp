@@ -4,6 +4,10 @@
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/event.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/component/mouse.hpp>
+#include <format>
+#include "utility/utility.h"
 #include "model/DataBlock.hpp"
 
 class ArticleEntry : public ftxui::ComponentBase
@@ -16,32 +20,39 @@ public:
         auto content = ftxui::vbox({ftxui::text(article_.title_) | ftxui::notflex,
                                     ftxui::separator(),
                                     ftxui::hbox({ftxui::text(article_.author_) | ftxui::notflex,
-                                                 ftxui::separator(),
-                                                 ftxui::text(std::to_string(article_.time_)) | ftxui::notflex,
-                                                 ftxui::separator(),
-                                                 ftxui::text(std::to_string(article_.score_)) | ftxui::notflex,
-                                                 ftxui::separator(),
-                                                 ftxui::text(std::to_string(article_.descendants_)) | ftxui::notflex}),
-                                    ftxui::separator(),
-                                    ftxui::separatorEmpty()}) | ftxui::notflex;
+                                                 ftxui::text(" - ") | ftxui::notflex,
+                                                 ftxui::text(utils::GetDateFromUnix(article_.time_)) | ftxui::notflex,
+                                                 ftxui::text(" - ") | ftxui::notflex,
+                                                 ftxui::text(std::format("Score: {}", article_.score_)) | ftxui::notflex,
+                                                 ftxui::text(" - ") | ftxui::notflex,
+                                                 ftxui::text(std::format("Comments({})", article_.descendants_)) | ftxui::notflex}),
+                                    
+                                }) | ftxui::notflex;
 
         // Add visual cues when highlighted by keyboard navigation
         if (Focused())
         {
             content = content | inverted | focus;
         }
-        return content;
+        return content | reflect(box_);
     }
 
     bool OnEvent(ftxui::Event event) override
     {
         
-        if(ftxui::ComponentBase::OnEvent(event))
+        if(event.is_mouse())
         {
-            return true;
-        } 
+            if(event.mouse().button == ftxui::Mouse::Left && event.mouse().motion == ftxui::Mouse::Pressed)
+            {
+                if(box_.Contain(event.mouse().x, event.mouse().y))
+                {
+                    TakeFocus();
+                    return true;
+                }
+            }
+        }
 
-        return false;
+        return ftxui::ComponentBase::OnEvent(event);
     }
 
     bool  Focusable() const override
@@ -50,44 +61,22 @@ public:
     }
 
 private:
+    Box box_;
     StoryDataBlock article_;
 };
 
 ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles)
 {
-    class ImplArticleList : public ftxui::ComponentBase
-    {
-    public:
-        ImplArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles)
-        {
-            articles_ = ftxui::Container::Vertical({});
-            for (auto &article : *articles)
-            {
-                articles_->Add(ftxui::Make<ArticleEntry>(article));
-            }
-            this->Add(articles_);
-        };
-        ftxui::Element OnRender() override
-        {
-            return articles_->Render(); 
-        }
+      std::vector<ftxui::Component> entries;
 
-        bool OnEvent(ftxui::Event event) override
-        {   
+    for (auto& article : *articles) {
+        entries.push_back(
+            ftxui::Make<ArticleEntry>(article)
+        );
+    }
 
-            if(ftxui::ComponentBase::OnEvent(event))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-    private:
-        ftxui::Component articles_;
-    };
-
-    return ftxui::Make<ImplArticleList>(articles);
+    return ftxui::Container::Vertical(std::move(entries));
+    
 }
 
 #endif
