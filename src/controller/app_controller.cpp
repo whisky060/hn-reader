@@ -1,6 +1,5 @@
 #include <ftxui/component/component.hpp>
 #include "app_controller.hpp"
-#include "view/news_list_view.hpp"
 #include "view/Template.hpp"
 #include "view/ArticleListView.hpp"
 #include <vector>

@@ -1,4 +1,6 @@
 #include "app_model.hpp"
+#include <stdexcept>
+#include <iostream>
 
 AppModel::AppModel()
 {
@@ -6,16 +8,22 @@ AppModel::AppModel()
    comments_ = std::make_shared<std::vector<CommentDataBlock>>();
    job_list_ = std::make_shared<std::vector<JobDataBlock>>();
    client = new HNClient();
-   auto story_ids = FetchTopStories();
-   for(int i = 0; i < 25; i++){
-      FetchStory(story_ids[i]);
+   auto tmp = FetchTopStories();
+   top_stories_ = IndexTracker(tmp);
+   try{
+      for(int i = 0; i < fetch_limit; i++){
+         FetchStory(top_stories_.SafeNext());
+      }
+
+   }
+   catch(const std::out_of_range& e){
+      std::cerr << "Error: " << e.what() << std::endl;
    }
 }
 
 AppModel::~AppModel()
 {
    delete client;
-   delete shown_ids;
 }
 
 std::vector<ID> AppModel::FetchTopStories()
@@ -70,4 +78,18 @@ void AppModel::FetchJob(ID id)
    );
 
    this->job_list_->push_back(job_block);
+}
+
+
+void AppModel::LoadMoreStories()
+{
+   try{
+      for(int i = 0; i < fetch_limit; i++){
+         FetchStory(top_stories_.SafeNext());
+      }
+
+   }
+   catch(const std::out_of_range& e){
+      std::cerr << "Error: " << e.what() << std::endl;
+   }
 }

@@ -41,12 +41,13 @@ inline ftxui::Component BaseTemplate(ftxui::Component main_view)
             time_ = utils::GetCurrentDate();
             auto button_options = ftxui::ButtonOption::Simple();
             button_options.transform = [](const ftxui::EntryState& state)
-            {
+            {   
+                auto content = ftxui::text(state.label);
                 if (state.focused)
                 {
-                    return ftxui::text(state.label) | ftxui::inverted;
+                    return content;
                 }
-                return ftxui::text(state.label);
+                return content | ftxui::bgcolor(ftxui::Color::Black);
             };
 
             ftxui::Component button = ftxui::Button("ctrl+p", [this]()
@@ -59,12 +60,6 @@ inline ftxui::Component BaseTemplate(ftxui::Component main_view)
                                    });
             this->Add(main_view_);
             this->Add(bottom_bar_);
-            std::thread([this] {
-                    while (true) {
-                        std::this_thread::sleep_for(std::chrono::seconds(1));
-                        this->OnRender();
-                    }
-            }).detach()
             
         }
 

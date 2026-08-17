@@ -1,0 +1,56 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Color Theme",
+    "description": "a theme for the hn-reader application",
+    "type": "object",
+    "properties": {
+        "background" : {
+            "description": "background color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "foreground" : {
+            "description": "foreground color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "primary" : {
+            "description": "primary color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "secondary" : {
+            "description": "secondary color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "border" : {
+            "description": "border color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "focus" : {
+            "description": "focus color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "selected" : {
+            "description": "selected color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "error" : {
+            "description": "error color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "success" : {
+            "description": "success color",
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+    }
+
+   
+
+}
