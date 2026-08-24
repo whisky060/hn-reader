@@ -61,7 +61,8 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
         }
 
     private:
-        void Refresh(){
+        void Refresh()
+        {
 
             list_->Detach();
             entries_.clear();

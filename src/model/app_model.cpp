@@ -1,6 +1,8 @@
 #include "app_model.hpp"
 #include <stdexcept>
 #include <iostream>
+#include <future>
+#include <thread>
 
 AppModel::AppModel()
 {
@@ -84,9 +86,16 @@ void AppModel::FetchJob(ID id)
 void AppModel::LoadMoreStories()
 {
    try{
-      for(int i = 0; i < fetch_limit; i++){
-         FetchStory(top_stories_.SafeNext());
-      }
+      
+      std::thread([this]
+         {
+
+            for(int i = 0; i < this->fetch_limit; i++)
+            {
+               this->FetchStory(this->top_stories_.SafeNext());
+            }
+
+      }).detach();
 
    }
    catch(const std::out_of_range& e){
