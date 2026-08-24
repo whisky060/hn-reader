@@ -11,20 +11,28 @@
 #include "model/DataBlock.hpp"
 #include "view/ArticleEntry.hpp"
 
-ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles)
+ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles,
+                             std::function<void(StoryDataBlock)> on_select,
+                             std::function<void()> on_load
+                            )
 {
 
     class ImplArticleList : public ftxui::ComponentBase
     {
     public:
-        ImplArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles) : ftxui::ComponentBase()
+        ImplArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles,
+                        std::function<void()> on_load,
+                        std::function<void(StoryDataBlock)> on_select
+                        ) : ftxui::ComponentBase()
         {
             articles_ = articles;
+            on_load_ = on_load;
+            on_select_ = on_select;
             for (auto &article : *articles_)
             {
-                entries_.push_back(ftxui::Make<ArticleEntry>(article));
+                entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
             }
-            list_ = ftxui::Container::Vertical(std::move(entries_));
+            list_ = ftxui::Container::Vertical(entries_);
 
             auto button_options = ftxui::ButtonOption::Simple();
             button_options.transform = [](const ftxui::EntryState &state)
@@ -37,33 +45,50 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
                 return content | ftxui::center | ftxui::border;
             };
 
-            auto load_more_button = ftxui::Button("Load More", []()
-                                                  {
-                                                      // Implement the logic to load more articles here
-                                                  },
-                                                  button_options);
+            auto load_more_button = ftxui::Button("Load More", on_load_, button_options);
             load_more_button_ = load_more_button;
             this->Add(list_);
-            this->Add(load_more_button_);
+            list_->Add(load_more_button_);
         }
+        
 
         ftxui::Element OnRender() override
         {   
-            return ftxui::vbox({
-                list_->Render(),
-                load_more_button_->Render()
-            });
+            if(entries_.size()!=articles_->size())
+                Refresh();
+
+            return list_->Render();
         }
 
     private:
+        void Refresh(){
+
+            list_->Detach();
+            entries_.clear();
+            int indx = list_->ChildCount() ;
+            for (auto &article : *articles_)
+            {
+                entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
+            }
+            list_ = ftxui::Container::Vertical(entries_);
+            if(articles_->size()<500)
+                list_->Add(load_more_button_);
+            
+            this->Add(list_);
+            auto child = list_->ChildAt(indx);
+            child->TakeFocus();
+      
+        }
+
         ftxui::Component load_more_button_;
+        ftxui::Component list_;
         std::shared_ptr<std::vector<StoryDataBlock>> articles_;
         std::vector<ftxui::Component> entries_;
-        ftxui::Component list_;
+        std::function<void()> on_load_;
+        std::function<void(StoryDataBlock)> on_select_;
     };
-    std::vector<ftxui::Component> entries;
-
-    return ftxui::Make<ImplArticleList>(articles);
+    
+    return ftxui::Make<ImplArticleList>(articles,on_load, on_select);
 }
 
 #endif

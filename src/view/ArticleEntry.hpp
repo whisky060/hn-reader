@@ -13,7 +13,10 @@
 class ArticleEntry : public ftxui::ComponentBase
 {
 public:
-    ArticleEntry(StoryDataBlock article) : article_(article) {};
+    ArticleEntry(StoryDataBlock article, std::function<void(StoryDataBlock)> on_select) :
+     article_(article), 
+     on_select_(on_select) 
+     {};
 
     ftxui::Element OnRender() override
     {
@@ -41,7 +44,7 @@ public:
     {
         
         if(event == ftxui::Event::Escape){
-            
+            on_select_(this->article_);       
             return true;
         }
 
@@ -67,6 +70,7 @@ public:
     }
 
 private:
+    std::function<void(StoryDataBlock)> on_select_;
     Box box_;
     StoryDataBlock article_;
 };

@@ -8,7 +8,12 @@
 AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
 {
     model_ = model;
-    template_ = BaseTemplate(ArticleList(model_->GetArticlesList()));
+    template_ = BaseTemplate(ArticleList(model_->GetArticlesList(),
+                                        [this](StoryDataBlock story)
+                                        { /* TODO make the the creation fo the view of the data */},
+                                        [this]()
+                                        {this->model_->LoadMoreStories();}
+                            ));
     this->Add(template_);
 }
 
