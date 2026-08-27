@@ -1,7 +1,8 @@
 #include <ftxui/component/component.hpp>
 #include "app_controller.hpp"
-#include "view/Template.hpp"
-#include "view/ArticleListView.hpp"
+#include "view/template/Template.hpp"
+#include "view/template/BaseTemplate.hpp"
+#include "view/ArticleList/ArticleListView.hpp"
 #include <vector>
 #include <string>
 
@@ -10,11 +11,15 @@ AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
     model_ = model;
     template_ = BaseTemplate(ArticleList(model_->GetArticlesList(),
                                         [this](StoryDataBlock story)
-                                        { /* TODO make the the creation fo the view of the data */},
+                                        { /* TODO make the the creation fo the view of the data */ },
                                         [this]()
-                                        {this->model_->LoadMoreStories();}
+                                        {this->model_->LoadMoreStories();},
+                                        [this](){
+                                            return this->model_->isLoading();
+                                        }
                             ));
     this->Add(template_);
+    
 }
 
 AppController::~AppController() {

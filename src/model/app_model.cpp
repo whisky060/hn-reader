@@ -12,11 +12,11 @@ AppModel::AppModel()
    client = new HNClient();
    auto tmp = FetchTopStories();
    top_stories_ = IndexTracker(tmp);
+   
    try{
-      for(int i = 0; i < fetch_limit; i++){
-         FetchStory(top_stories_.SafeNext());
-      }
 
+      LoadMoreStories();
+   
    }
    catch(const std::out_of_range& e){
       std::cerr << "Error: " << e.what() << std::endl;
@@ -33,7 +33,7 @@ std::vector<ID> AppModel::FetchTopStories()
    return std::move(client->FetchToStories());
 }
 
-void AppModel::FetchStory(ID id)
+StoryDataBlock AppModel::FetchStory(ID id)
 {
    nlohmann::json story = client->FetchID(id);
 
@@ -48,10 +48,10 @@ void AppModel::FetchStory(ID id)
        story.value("title", ""),
        story.value("url", ""));
 
-   this->articles_list_->push_back(article_block);
+   return article_block;
 }
 
-void AppModel::FetchComment(ID id)
+CommentDataBlock AppModel::FetchComment(ID id)
 {
    nlohmann::json comment = client->FetchID(id);
    auto comment_block = CommentDataBlock(
@@ -63,10 +63,10 @@ void AppModel::FetchComment(ID id)
        comment.value("text", ""),
        comment.value("time", 0));
 
-   this->comments_->push_back(comment_block);
+   return comment_block;
 }
 
-void AppModel::FetchJob(ID id)
+JobDataBlock AppModel::FetchJob(ID id)
 {
    nlohmann::json job = client->FetchID(id);
    auto job_block = JobDataBlock(
@@ -79,21 +79,23 @@ void AppModel::FetchJob(ID id)
       job.value("url", "")
    );
 
-   this->job_list_->push_back(job_block);
+   return job_block;
 }
 
 
 void AppModel::LoadMoreStories()
 {
+   
    try{
-      
       std::thread([this]
          {
-
+            this->is_loading_.exchange(true);
             for(int i = 0; i < this->fetch_limit; i++)
             {
-               this->FetchStory(this->top_stories_.SafeNext());
+               this->articles_list_->push_back(FetchStory(this->top_stories_.SafeNext()));
+               
             }
+            this->is_loading_.exchange(false);
 
       }).detach();
 

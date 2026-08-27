@@ -9,11 +9,12 @@
 #include <format>
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
-#include "view/ArticleEntry.hpp"
+#include "view/ArticleList/ArticleEntry.hpp"
 
 ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles,
                              std::function<void(StoryDataBlock)> on_select,
-                             std::function<void()> on_load
+                             std::function<void()> on_load,
+                             std::function<bool()> is_loading
                             )
 {
 
@@ -22,12 +23,16 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
     public:
         ImplArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles,
                         std::function<void()> on_load,
-                        std::function<void(StoryDataBlock)> on_select
+                        std::function<void(StoryDataBlock)> on_select,
+                        std::function<bool()> is_loading
                         ) : ftxui::ComponentBase()
         {
             articles_ = articles;
             on_load_ = on_load;
             on_select_ = on_select;
+            is_loading_ = is_loading;
+            
+            old_state = false;
             for (auto &article : *articles_)
             {
                 entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
@@ -54,8 +59,18 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
 
         ftxui::Element OnRender() override
         {   
-            if(entries_.size()!=articles_->size())
+
+            if(is_loading_())
+            {
+                 // TODO make the loading row render
+            }   
+                
+
+            if(old_state==false and is_loading_()==false)
+            {
                 Refresh();
+            }
+            old_state = is_loading_();
 
             return list_->Render();
         }
@@ -76,8 +91,9 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
                 list_->Add(load_more_button_);
             
             this->Add(list_);
-            auto child = list_->ChildAt(indx);
-            child->TakeFocus();
+            // auto child = list_->ChildAt(indx);
+            //child->TakeFocus();
+           
       
         }
 
@@ -87,9 +103,11 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
         std::vector<ftxui::Component> entries_;
         std::function<void()> on_load_;
         std::function<void(StoryDataBlock)> on_select_;
+        std::function<bool()> is_loading_;
+        bool old_state;
     };
     
-    return ftxui::Make<ImplArticleList>(articles,on_load, on_select);
+    return ftxui::Make<ImplArticleList>(articles,on_load, on_select, is_loading);
 }
 
 #endif

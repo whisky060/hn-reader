@@ -16,12 +16,17 @@ int main() {
     auto model = std::make_shared<AppModel>();
     auto controller = ftxui::Make<AppController>(model);
     app.Loop(controller);
+
     std::thread([&] {
+
+    // loop for keeping the clock always updating even when the UI is idel
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        app.PostEvent(ftxui::Event::Custom);
+        app.RequestAnimationFrame();
     }
-}).detach();
+
+    }).detach();
+    
   } catch (const std::exception& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return EXIT_FAILURE;

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <atomic>
 #include "HNClient.hpp"
 #include "model/DataBlock.hpp"
 #include "IndexTracker.hpp"
@@ -14,9 +15,10 @@ class AppModel {
         ~AppModel();
 
         std::vector<ID> FetchTopStories();
-        void FetchStory(ID id);
-        void FetchComment(ID id);
-        void FetchJob(ID id);
+        StoryDataBlock FetchStory(ID id);
+        CommentDataBlock FetchComment(ID id);
+        JobDataBlock FetchJob(ID id);
+        bool isLoading() const {return is_loading_.load();}
         void LoadMoreStories();
         std::shared_ptr<std::vector<JobDataBlock>> GetJobList() const { return job_list_; }
         std::shared_ptr<std::vector<CommentDataBlock>> GetComments() const { return comments_; }
@@ -30,6 +32,7 @@ class AppModel {
         std::shared_ptr<std::vector<JobDataBlock>> job_list_;
         std::shared_ptr<std::vector<CommentDataBlock>> comments_;
         std::shared_ptr<std::vector<StoryDataBlock>> articles_list_;
+        std::atomic<bool> is_loading_{false};
 };
 
 

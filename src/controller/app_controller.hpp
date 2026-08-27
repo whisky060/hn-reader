@@ -5,7 +5,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/event.hpp>
-#include "view/Template.hpp"
+#include "view/template/Template.hpp"
 #include "model/app_model.hpp"
 #include <memory>
 
