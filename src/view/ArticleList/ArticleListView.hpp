@@ -10,28 +10,123 @@
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
+#include "view/Spinner/spinner.hpp"
 
-ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles,
+ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
                              std::function<void(StoryDataBlock)> on_select,
                              std::function<void()> on_load,
-                             std::function<bool()> is_loading
-                            )
+                             std::function<bool()> is_loading)
 {
 
     class ImplArticleList : public ftxui::ComponentBase
     {
     public:
-        ImplArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articles,
+        ImplArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
                         std::function<void()> on_load,
                         std::function<void(StoryDataBlock)> on_select,
-                        std::function<bool()> is_loading
-                        ) : ftxui::ComponentBase()
+                        std::function<bool()> is_loading) : ftxui::ComponentBase()
         {
-            articles_ = articles;
+            get_articles_ = get_articles;
+            articles_ = get_articles_();
             on_load_ = on_load;
             on_select_ = on_select;
             is_loading_ = is_loading;
-            
+            std::string first_pattern[] = {
+
+                "█   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "█   ▒ ▒▒  ▒       ▒   ▒ ▒     ▒   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "█▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "█   ▒ ▒  ▒▒       ▒ ▒   ▒     ▒   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "█   ▒ ▒   ▒       ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒  ░▓█▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒  ░▓█▒▒  ▒       ▒   ▒ ▒     ▒   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒░▓█▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒  ░▓█▒  ▒▒       ▒ ▒   ▒     ▒   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "▒  ░▓█▒   ▒       ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒ ░▓█       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒░▓█       ▒   ▒ ▒     ▒   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ░▓█       ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒ ░▓█       ▒ ▒   ▒     ▒   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "▒   ▒ ▒ ░▓█       ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒  ░▓█  ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒  ░▓█  ▒   ▒ ▒     ▒   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒  ░▓█  ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒  ░▓█  ▒ ▒   ▒     ▒   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "▒   ▒ ▒   ▒  ░▓█  ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ░▓█▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒       ░▓█ ▒ ▒     ▒   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ░▓█▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒       ░▓█   ▒     ▒   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "▒   ▒ ▒   ▒       ░▓█▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ▒▒▒▒ ░▓█▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒       ▒   ▒░▓█    ▒   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒ ░▓█▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒       ▒ ▒  ░▓█    ▒   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "▒   ▒ ▒   ▒       ▒  ▒ ░▓█▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒░▓█▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒       ▒   ▒ ▒   ░▓█   ▒ ▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒░▓█▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒       ▒ ▒   ▒   ░▓█   ▒ ▒   ▒ ▒     ▒ ▒\n"
+                "▒   ▒ ▒   ▒       ▒  ▒  ▒▒▒▒░▓█   ▒ ▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒░▓█▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒       ▒   ▒ ▒     ▒  ░▓█▒   ▒ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒  ▒▒▒░▓█▒   ▒ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒       ▒ ▒   ▒     ▒  ░▓█▒   ▒ ▒     ▒ ▒\n"
+                "▒   ▒ ▒   ▒       ▒  ▒  ▒▒▒▒▒ ▒  ░▓█▒▒▒▒  ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒░▓█ ▒▒▒▒▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒       ▒   ▒ ▒     ▒   ▒ ▒ ░▓█ ▒     ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒ ░▓█ ▒▒▒▒  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒       ▒ ▒   ▒     ▒   ▒ ▒ ░▓█ ▒     ▒ ▒\n"
+                "▒   ▒ ▒   ▒       ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒░▓█ ▒▒▒▒▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒░▓█▒ ▒▒▒▒\n"
+                "▒   ▒ ▒▒  ▒       ▒   ▒ ▒     ▒   ▒ ▒   ▒ ▒░▓█  ▒   ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒░▓█  ▒▒▒▒\n"
+                "▒   ▒ ▒  ▒▒       ▒ ▒   ▒     ▒   ▒ ▒   ▒ ▒░▓█  ▒ ▒\n"
+                "▒   ▒ ▒   ▒       ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒░▓█▒ ▒  ▒",
+
+                "▒   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ░▓█▒\n"
+                "▒   ▒ ▒▒  ▒       ▒   ▒ ▒     ▒   ▒ ▒   ▒ ▒     ░▓█ ▒\n"
+                "▒▒▒▒▒ ▒ ▒ ▒       ▒▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ░▓█▒\n"
+                "▒   ▒ ▒  ▒▒       ▒ ▒   ▒     ▒   ▒ ▒   ▒ ▒     ░▓█ ▒\n"
+                "▒   ▒ ▒   ▒       ▒  ▒  ▒▒▒▒▒ ▒   ▒ ▒▒▒▒  ▒▒▒▒▒ ░▓█ ▒",
+
+            };
+            first_load_spinner_ = Spinner(first_pattern, 1000ms);
+            this->Add(first_load_spinner_);
+
+            std::string pattern[] = {
+                "█N READER",
+                "▓N READER",
+                "H█ READER",
+                "H▓ READER",
+                "HN█READER",
+                "HN▓READER",
+                "HN █EADER",
+                "HN ▓EADER",
+                "HN R█ADER",
+                "HN R▓ADER",
+                "HN RE█DER",
+                "HN RE▓DER",
+                "HN REA█ER",
+                "HN REA▓ER",
+                "HN READ█R",
+                "HN READ▓R",
+                "HN READE█",
+                "HN READE▓",
+            };
+
+            spinner_ = Spinner(pattern, 1000ms);
+            this->Add(spinner_);
+
             old_state = false;
             for (auto &article : *articles_)
             {
@@ -45,9 +140,9 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
                 auto content = ftxui::text(state.label);
                 if (state.focused)
                 {
-                    return content | ftxui::inverted | ftxui::center | ftxui::border;
+                    return content | ftxui::inverted | ftxui::center;
                 }
-                return content | ftxui::center | ftxui::border;
+                return content | ftxui::center;
             };
 
             auto load_more_button = ftxui::Button("Load More", on_load_, button_options);
@@ -55,22 +150,31 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
             this->Add(list_);
             list_->Add(load_more_button_);
         }
-        
 
         ftxui::Element OnRender() override
-        {   
+        {
+            bool loading = is_loading_();
 
-            if(is_loading_())
+            if (entries_.empty() && loading)
             {
-                 // TODO make the loading row render
-            }   
-                
+                old_state = loading;
+                return first_load_spinner_->Render() | ftxui::center;
+            }
 
-            if(old_state==false and is_loading_()==false)
+            if (old_state && !loading)
             {
                 Refresh();
             }
-            old_state = is_loading_();
+
+            if (loading && !old_state)
+            {
+                load_more_button_->Detach();
+                int indx = entries_.size()-1;
+                list_->ChildAt(indx)->TakeFocus();
+                list_->Add(spinner_ | ftxui::center);
+            }
+
+            old_state = loading;
 
             return list_->Render();
         }
@@ -79,35 +183,40 @@ ftxui::Component ArticleList(std::shared_ptr<std::vector<StoryDataBlock>> articl
         void Refresh()
         {
 
+            auto next = get_articles_();
+            if (next.get() == articles_.get())
+                return;
+
+            articles_ = next;
             list_->Detach();
+            int indx = entries_.size();
             entries_.clear();
-            int indx = list_->ChildCount() ;
             for (auto &article : *articles_)
             {
                 entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
             }
             list_ = ftxui::Container::Vertical(entries_);
-            if(articles_->size()<500)
+            if (articles_->size() < 500)
                 list_->Add(load_more_button_);
-            
+
             this->Add(list_);
-            // auto child = list_->ChildAt(indx);
-            //child->TakeFocus();
-           
-      
+            list_->ChildAt(indx)->TakeFocus();
         }
 
         ftxui::Component load_more_button_;
         ftxui::Component list_;
-        std::shared_ptr<std::vector<StoryDataBlock>> articles_;
+        ftxui::Component first_load_spinner_;
+        ftxui::Component spinner_;
+        std::shared_ptr<const std::vector<StoryDataBlock>> articles_;
         std::vector<ftxui::Component> entries_;
         std::function<void()> on_load_;
         std::function<void(StoryDataBlock)> on_select_;
         std::function<bool()> is_loading_;
+        std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles_;
         bool old_state;
     };
-    
-    return ftxui::Make<ImplArticleList>(articles,on_load, on_select, is_loading);
+
+    return ftxui::Make<ImplArticleList>(get_articles, on_load, on_select, is_loading);
 }
 
 #endif

@@ -48,6 +48,7 @@ inline ftxui::Component BaseTemplate(ftxui::Component main_view)
             time_ = utils::GetCurrentDate();      
             return ftxui::vbox({
                 main_view_->Render()  | ftxui::vscroll_indicator | ftxui::frame | ftxui::flex ,
+                ftxui::filler() | ftxui::flex,
                 ftxui::separatorCharacter("-") | ftxui::notflex,
                 bottom_bar_->Render() | ftxui::notflex 
             });

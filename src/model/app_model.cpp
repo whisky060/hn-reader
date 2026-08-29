@@ -6,26 +6,11 @@
 
 AppModel::AppModel()
 {
-   articles_list_ = std::make_shared<std::vector<StoryDataBlock>>();
+   articles_list_.store(std::make_shared<std::vector<StoryDataBlock>>());
    comments_ = std::make_shared<std::vector<CommentDataBlock>>();
    job_list_ = std::make_shared<std::vector<JobDataBlock>>();
-   client = new HNClient();
    auto tmp = FetchTopStories();
    top_stories_ = IndexTracker(tmp);
-   
-   try{
-
-      LoadMoreStories();
-   
-   }
-   catch(const std::out_of_range& e){
-      std::cerr << "Error: " << e.what() << std::endl;
-   }
-}
-
-AppModel::~AppModel()
-{
-   delete client;
 }
 
 std::vector<ID> AppModel::FetchTopStories()
@@ -85,22 +70,24 @@ JobDataBlock AppModel::FetchJob(ID id)
 
 void AppModel::LoadMoreStories()
 {
-   
-   try{
-      std::thread([this]
+   bool expected = false;
+   if(!is_loading_.compare_exchange_strong(expected, true))
+      return;
+
+   std::thread([self = shared_from_this()]()
+   {
+      try{
+         for(int i = 0; i < self->fetch_limit; i++)
          {
-            this->is_loading_.exchange(true);
-            for(int i = 0; i < this->fetch_limit; i++)
-            {
-               this->articles_list_->push_back(FetchStory(this->top_stories_.SafeNext()));
-               
-            }
-            this->is_loading_.exchange(false);
+            auto combined = std::make_shared<std::vector<StoryDataBlock>>(*self->articles_list_.load());
+            combined->push_back(self->FetchStory(self->top_stories_.SafeNext()));
+            self->articles_list_.store(combined);
+         }
+      }
+      catch(const std::exception& e){
+         std::cerr << "Error: " << e.what() << std::endl;
+      }
 
-      }).detach();
-
-   }
-   catch(const std::out_of_range& e){
-      std::cerr << "Error: " << e.what() << std::endl;
-   }
+      self->is_loading_.store(false);
+   }).detach();
 }
