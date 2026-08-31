@@ -2,18 +2,114 @@
 #define ARTICLESCRAPER_H
 
 #include <lexbor/html/html.h>
+#include <string>
+#include <thread>
+#include <map>
+#include <unordered_map>
+#include <regex>
+#include "exeptions/html_parsing_error.hpp"
 
 class ArticleScraper
 {
 private:
-    
+    void ParseHTML(std::string html_page);
+    void ExtractContent();
+    void FreeResources();
+
+    enum class RegexPattern
+    {
+        UNLIKELY_CANDIDATES,
+        OK_MAYBE_ITS_A_CANDIDATE,
+        POSITIVE,
+        NEGATIVE,
+        EXTRANEOUS,
+        BYLINE,
+        REPLACE_FONTS,
+        NORMALIZE,
+        VIDEOS,
+        SHARE_ELEMENTS,
+        NEXT_LINK,
+        PREV_LINK,
+        TOKENIZE,
+        WHITESPACE,
+        HAS_CONTENT,
+        HASH_URL,
+        SRC_STE_URL,
+        B64_DATA_URL,
+        COMMAS,
+        JSON_LD_ARTICLE_TYPES,
+        AD_WORDS,
+        LOADING_WORDS
+
+    };
+
+    lxb_html_document_t *doc;
+    lxb_dom_node_t *dom;
+
+    // Max number of nodes supported by this parser. Default: 0 (no limit)
+    const int DEFAULT_MAX_ELEMS_TO_PARSE = 0;
+
+    // The number of top candidates to consider when analysing how
+    // tight the competition is among candidates.
+    const int DEFAULT_N_TOP_CANDIDATES = 5;
+
+    // Element tags to score by default.
+    const std::vector<std::string> DEFAULT_TAGS_TO_SCORE = {"section", "h2", "h3", "h4", "h5", "h6", "p", "td", "pre"};
+
+    const unsigned int DEFAULT_CHARDEFAULT_CHAR_THRESHOLD = 500;
+
+    const std::unordered_map<RegexPattern, std::regex> REGEXPS = {
+        {RegexPattern::UNLIKELY_CANDIDATES, std::regex("-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|"
+                                                       "disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|"
+                                                       "rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|"
+                                                       "agegate|pagination|pager|popup|yom-remote",
+                                                       std::regex::icase)},
+        {RegexPattern::OK_MAYBE_ITS_A_CANDIDATE, std::regex("and|article|body|column|content|main|mathjax|shadow", std::regex::icase)},
+        {RegexPattern::POSITIVE, std::regex("article|body|content|entry|hentry|h-entry|main|page|pagination|post|text|blog|story", std::regex::icase)},
+        {RegexPattern::NEGATIVE, std::regex("-ad-|hidden|^hid$| hid$| hid |^hid |banner|combx|comment|com-|contact|"
+                                            "footer|gdpr|masthead|media|meta|outbrain|promo|related|scroll|share|"
+                                            "shoutbox|sidebar|skyscraper|sponsor|shopping|tags|widget",
+                                            std::regex::icase)},
+        {RegexPattern::EXTRANEOUS, std::regex("print|archive|comment|discuss|e[\\-]?mail|share|reply|all|login|sign|single|utility", std::regex::icase)},
+        {RegexPattern::BYLINE, std::regex("byline|author|dateline|writtenby|p-author", std::regex::icase)},
+        {RegexPattern::REPLACE_FONTS, std::regex("<(/?)font[^>]*>", std::regex::icase)},
+        {RegexPattern::NORMALIZE, std::regex("\\s{2,}", std::regex::icase)},
+        {RegexPattern::VIDEOS, std::regex("//(www\\.)?((dailymotion|youtube|youtube-nocookie|player\\.vimeo|v\\.qq|"
+                                          "bilibili|live.bilibili)\\.com|(archive|upload\\.wikimedia)\\.org|"
+                                          "player\\.twitch\\.tv)",
+                                          std::regex::icase)},
+        {RegexPattern::SHARE_ELEMENTS, std::regex("(\\b|_)(share|sharedaddy)(\\b|_)", std::regex::icase)},
+        {RegexPattern::NEXT_LINK, std::regex("(next|weiter|continue|>([^\\|]|$)|»([^\\|]|$))", std::regex::icase)},
+        {RegexPattern::PREV_LINK, std::regex("(prev|earl|old|new|<|«)", std::regex::icase)},
+        {RegexPattern::TOKENIZE, std::regex("\\W+", std::regex::icase)},
+        {RegexPattern::WHITESPACE, std::regex("^\\s*$")},
+        {RegexPattern::HAS_CONTENT, std::regex("^\\s*$")},
+        {RegexPattern::HASH_URL, std::regex("^#.+")},
+        {RegexPattern::SRC_STE_URL, std::regex("(\\S+)(\\s+[\\d.]+[xw])?(\\s*(?:,|$))", std::regex::icase)},
+        {RegexPattern::B64_DATA_URL, std::regex("^data:\\s*([^\\s;,]+)\\s*;\\s*base64\\s*,", std::regex::icase)},
+        {RegexPattern::COMMAS, std::regex(","             // U+002C  COMMA
+                                          "|\xD8\x8C"     // U+060C  ARABIC COMMA
+                                          "|\xEF\xB9\x90" // U+FE50  SMALL COMMA
+                                          "|\xEF\xB8\x90" // U+FE10  PRESENTATION FORM FOR VERTICAL COMMA
+                                          "|\xEF\xB8\x91" // U+FE11  PRESENTATION FORM FOR VERTICAL IDEOGRAPHIC COMMA
+                                          "|\xE2\xB9\x81" // U+2E41  REVERSED COMMA
+                                          "|\xE2\xB8\xB4" // U+2E34  RAISED COMMA
+                                          "|\xE2\xB8\xB2" // U+2E32  TURNED COMMA
+                                          "|\xEF\xBC\x8C")},
+        {RegexPattern::JSON_LD_ARTICLE_TYPES, std::regex("^Article|AdvertiserContentArticle|NewsArticle|AnalysisNewsArticle|"
+                                                         "AskPublicNewsArticle|BackgroundNewsArticle|OpinionNewsArticle|"
+                                                         "ReportageNewsArticle|ReviewNewsArticle|Report|SatiricalArticle|"
+                                                         "ScholarlyArticle|MedicalScholarlyArticle|SocialMediaPosting|BlogPosting|"
+                                                         "LiveBlogPosting|DiscussionForumPosting|TechArticle|APIReference$")},
+        {RegexPattern::AD_WORDS, std::regex( "^(ad(vertising|vertisement)?|pub(licité)?|werb(ung)?|广告|Реклама|Anuncio)$", std::regex::icase)},
+        {RegexPattern::LOADING_WORDS, std::regex( "^((loading|正在加载|Загрузка|chargement|cargando)(…|\\.\\.\\.)?)$", std::regex::icase)}
+
+    };
+
 public:
-    ArticleScraper()=default;
-    ~ArticleScraper()=default;
+    ArticleScraper() : doc(nullptr), dom(nullptr) {};
+    ~ArticleScraper();
+    std::string operator()(std::string html_page);
 };
-
-
-
-
 
 #endif
