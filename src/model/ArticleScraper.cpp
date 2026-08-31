@@ -38,11 +38,10 @@ void ArticleScraper::FreeResources()
 
 void ArticleScraper::ExtractContent()
 {
-    
+
 }
 
 ArticleScraper::~ArticleScraper()
 {
     FreeResources();
-
 }
