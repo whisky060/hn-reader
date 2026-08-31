@@ -6,6 +6,7 @@
 #include <thread>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <regex>
 #include "exeptions/html_parsing_error.hpp"
 
@@ -54,7 +55,110 @@ private:
     const int DEFAULT_N_TOP_CANDIDATES = 5;
 
     // Element tags to score by default.
-    const std::vector<std::string> DEFAULT_TAGS_TO_SCORE = {"section", "h2", "h3", "h4", "h5", "h6", "p", "td", "pre"};
+    const std::vector<std::string> DEFAULT_TAGS_TO_SCORE = {
+        "section",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "p",
+        "td",
+        "pre"};
+
+    const std::vector<std::string> UNLIKELY_ROLES = {
+        "menu",
+        "menubar",
+        "complementary",
+        "navigation",
+        "alert",
+        "alertdialog",
+        "dialog"};
+
+    const std::unordered_set<std::string> DIV_TO_P_ELEMS = {
+        "BLOCKQUOTE",
+        "DL",
+        "DIV",
+        "IMG",
+        "OL",
+        "P",
+        "PRE",
+        "TABLE",
+        "UL"};
+
+    const std::vector<std::string> ALERT_TO_DIV_EXCEPTIONS = {"DIV", "ARTICLE", "SECTION", "P", "OL", "UL"};
+
+    const std::vector<std::string> PRESENTATIONAL_ATTRIBUTES = {
+        "align",
+        "background",
+        "bgcolor",
+        "border",
+        "cellpadding",
+        "cellspacing",
+        "frame",
+        "hspace",
+        "rules",
+        "style",
+        "valign",
+        "vspace",
+    };
+
+    const std::vector<std::string> DEPRECATED_SIZE_ATTRIBUTE_ELEMS = {"TABLE", "TH", "TD", "HR", "PRE"};
+
+    // The commented out elements qualify as phrasing content but tend to be
+    // removed by readability when put into paragraphs, so we ignore them here.
+    const std::vector<std::string> PHRASING_ELEMS = {
+        // "CANVAS", "IFRAME", "SVG", "VIDEO",
+        "ABBR",
+        "AUDIO",
+        "B",
+        "BDO",
+        "BR",
+        "BUTTON",
+        "CITE",
+        "CODE",
+        "DATA",
+        "DATALIST",
+        "DFN",
+        "EM",
+        "EMBED",
+        "I",
+        "IMG",
+        "INPUT",
+        "KBD",
+        "LABEL",
+        "MARK",
+        "MATH",
+        "METER",
+        "NOSCRIPT",
+        "OBJECT",
+        "OUTPUT",
+        "PROGRESS",
+        "Q",
+        "RUBY",
+        "SAMP",
+        "SCRIPT",
+        "SELECT",
+        "SMALL",
+        "SPAN",
+        "STRONG",
+        "SUB",
+        "SUP",
+        "TEXTAREA",
+        "TIME",
+        "VAR",
+        "WBR",
+    };
+
+    const std::vector<std::string> CLASSES_TO_PRESERVE = {"page"};
+
+    const std::unordered_map<std::string, char> HTML_ESCAPE_MAP = {
+        {"lt", '<'},
+        {"gt", '>'},
+        {"amp", '&'},
+        {"quot", '\"'},
+        {"apos", '\''},
+    };
 
     const unsigned int DEFAULT_CHARDEFAULT_CHAR_THRESHOLD = 500;
 
@@ -101,8 +205,8 @@ private:
                                                          "ReportageNewsArticle|ReviewNewsArticle|Report|SatiricalArticle|"
                                                          "ScholarlyArticle|MedicalScholarlyArticle|SocialMediaPosting|BlogPosting|"
                                                          "LiveBlogPosting|DiscussionForumPosting|TechArticle|APIReference$")},
-        {RegexPattern::AD_WORDS, std::regex( "^(ad(vertising|vertisement)?|pub(licité)?|werb(ung)?|广告|Реклама|Anuncio)$", std::regex::icase)},
-        {RegexPattern::LOADING_WORDS, std::regex( "^((loading|正在加载|Загрузка|chargement|cargando)(…|\\.\\.\\.)?)$", std::regex::icase)}
+        {RegexPattern::AD_WORDS, std::regex("^(ad(vertising|vertisement)?|pub(licité)?|werb(ung)?|广告|Реклама|Anuncio)$", std::regex::icase)},
+        {RegexPattern::LOADING_WORDS, std::regex("^((loading|正在加载|Загрузка|chargement|cargando)(…|\\.\\.\\.)?)$", std::regex::icase)}
 
     };
 
