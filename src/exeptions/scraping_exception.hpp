@@ -1,5 +1,5 @@
-#ifndef SCRAPING_EXCEPTION
-#define SCRAPING_EXCEPTION
+#ifndef SCRAPING_EXCEPTION_H
+#define SCRAPING_EXCEPTION_H
 
 #include <string>
 #include <exception>

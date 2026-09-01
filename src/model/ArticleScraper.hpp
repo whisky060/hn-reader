@@ -15,7 +15,112 @@ class ArticleScraper
 private:
     void ParseHTML(std::string html_page);
     void ExtractContent();
+    void UnwrapNoScriptImages();
     void FreeResources();
+
+    // helpers
+    std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);
+    std::vector<lxb_dom_node_t *> GetAllNodesWithTag(lxb_dom_node_t *root, std::unordered_set<std::string> tag_names);
+    lxb_dom_node_t *GetParent(lxb_dom_node_t *node);
+    std::vector<lxb_dom_node_t *> GetChildElements(lxb_dom_node_t *node);
+    std::string GetNodeTextContent(lxb_dom_node_t *node);
+    bool IsElementNode(lxb_dom_node_t *node);
+    bool IsTextNode(lxb_dom_node_t *node);
+    std::string GetTagName(lxb_dom_node_t *node);
+    std::string GetNodeId(lxb_dom_node_t *node);
+    std::string GetNodeClass(lxb_dom_node_t *node);
+    std::string GetAttribute(lxb_dom_node_t *node, const std::string &attr_name);
+    bool HasAttribute(lxb_dom_node_t *node, const std::string &attr_name);
+    void SetAttribute(lxb_dom_node_t *node, const std::string &attr_name, const std::string &value);
+    void RemoveAttribute(lxb_dom_node_t *node, const std::string &attr_name);
+    lxb_dom_node_t *GetFirstChild(lxb_dom_node_t *node);
+    lxb_dom_node_t *GetNextSibling(lxb_dom_node_t *node);
+    lxb_dom_node_t *GetPrevSibling(lxb_dom_node_t *node);
+
+    // Get first ELEMENT child (skips text/comment nodes)
+    lxb_dom_node_t *GetFirstChildElement(lxb_dom_node_t *node);
+
+    // Get next ELEMENT sibling (skips text/comment nodes)
+    lxb_dom_node_t *GetNextElementSibling(lxb_dom_node_t *node);
+
+    // Get previous ELEMENT sibling
+    lxb_dom_node_t *GetPrevElementSibling(lxb_dom_node_t *node);
+
+    // Count element children
+    size_t GetChildElementCount(lxb_dom_node_t *node);
+
+    // Depth-first traversal (skip self if ignoreSelfAndKids=true)
+    lxb_dom_node_t *GetNextNode(lxb_dom_node_t *node, bool ignoreSelfAndKids = false);
+
+    // Get ancestor chain (up to maxDepth, 0 = unlimited)
+    std::vector<lxb_dom_node_t *> GetAncestors(lxb_dom_node_t *node, size_t maxDepth = 0);
+    
+    // Remove node from tree
+    void RemoveNode(lxb_dom_node_t *node);
+
+    // Remove and return the next node (for safe iteration during removal)
+    lxb_dom_node_t *RemoveAndGetNext(lxb_dom_node_t *node);
+
+    // Replace child: parent replaces oldChild with newChild
+    void ReplaceChild(lxb_dom_node_t *parent, lxb_dom_node_t *newChild, lxb_dom_node_t *oldChild);
+
+    // Append child to parent
+    void AppendChild(lxb_dom_node_t *parent, lxb_dom_node_t *child);
+
+    // Insert newChild before refChild under parent
+    void InsertBefore(lxb_dom_node_t *parent, lxb_dom_node_t *newChild, lxb_dom_node_t *refChild);
+
+    // Create element with given tag name
+    lxb_dom_node_t *CreateElement(const std::string &tagName);
+
+    // Create text node
+    lxb_dom_node_t *CreateTextNode(const std::string &text);
+
+    // Change a node's tag (create new element, move children + attrs, replace in tree)
+    lxb_dom_node_t *SetNodeTag(lxb_dom_node_t *node, const std::string &newTag);
+
+    // Get inner text of a node (all text descendants, whitespace normalized optionally)
+    std::string GetInnerText(lxb_dom_node_t *node, bool normalize = true);
+
+    // Get link density: ratio of text inside <a> tags vs total text
+    float GetLinkDensity(lxb_dom_node_t *node);
+
+    // Get class weight: +/-25 per positive/negative regex match on class+id
+    int GetClassWeight(lxb_dom_node_t *node);
+
+    // Count occurrences of a character in node's text
+    int GetCharCount(lxb_dom_node_t *node, char delimiter = ',');
+
+    // Get text density: ratio of text in specified child tags vs total
+    float GetTextDensity(lxb_dom_node_t *node, const std::vector<std::string> &tags);
+
+    // Is this node phrasing content? (inline elements, text nodes, etc.)
+    bool IsPhrasingContent(lxb_dom_node_t *node);
+
+    // Is this node whitespace? (empty text node or <br>)
+    bool IsWhitespace(lxb_dom_node_t *node);
+
+    // Is this element empty? (no text, no meaningful children)
+    bool IsElementWithoutContent(lxb_dom_node_t *node);
+
+    // Does this element have any block-level child elements?
+    bool HasChildBlockElement(lxb_dom_node_t *element);
+
+    // Does this element have exactly one child of given tag, with no real text?
+    bool HasSingleTagInsideElement(lxb_dom_node_t *element, const std::string &tag);
+
+    // Does this node have an ancestor with the given tag name (up to maxDepth)?
+    bool HasAncestorTag(lxb_dom_node_t *node, const std::string &tagName,
+                        size_t maxDepth = 3);
+
+    // Is this node probably visible? (not display:none, not hidden, etc.)
+    bool IsProbablyVisible(lxb_dom_node_t *node);
+
+    // Initialize a node with base content score from its tag type
+    void InitializeNode(lxb_dom_node_t *node);
+
+    // Get innerHTML of a node (serialize subtree to string)
+    std::string GetInnerHtml(lxb_dom_node_t *node);
 
     enum class RegexPattern
     {

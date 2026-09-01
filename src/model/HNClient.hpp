@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 #include <curl/curl.h>
+#include "exeptions/scraping_exception.hpp"
 
 
 

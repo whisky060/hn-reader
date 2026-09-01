@@ -2,6 +2,7 @@
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <iostream>
+#include <format>
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -136,6 +137,7 @@ std::string HNClient::FetchArticle(std::string article_url)
 {
     this->handle = curl_easy_init();
     std::string response;
+    long http_code = 0l;
 
     if (handle == nullptr)
         // TODO make better error handling
@@ -166,6 +168,7 @@ std::string HNClient::FetchArticle(std::string article_url)
         curl_easy_cleanup(handle);
         throw std::runtime_error("error during the initialization od CURLOPT_WRITEDATA");
     }
+
 
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L); // handle redirects
     if (result != CURLE_OK)
@@ -200,14 +203,28 @@ std::string HNClient::FetchArticle(std::string article_url)
         throw std::runtime_error("error during the initialization od CURLOPT_USERAGENT");
     }
 
-    curl_easy_perform(handle);
+    result = curl_easy_perform(handle);
     if(result != CURLE_OK)
     {   
         // TODO make better error handling
         curl_easy_cleanup(handle);    
         throw std::runtime_error("error during the initialization od CURLOPT_URL");
     }
-        
+
+    result = curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &http_code);
+    if(result != CURLE_OK)
+    {   
+        // TODO make better error handling
+        curl_easy_cleanup(handle);    
+        throw std::runtime_error("error in retrieving the error code");
+    }
+
+    if(http_code > 400)
+    {
+        curl_easy_cleanup(handle);
+        throw ScrapingException("error code:"+ std::to_string(http_code)+" during website scraping");
+    }
+    
     curl_easy_cleanup(handle);
 
     return response;
