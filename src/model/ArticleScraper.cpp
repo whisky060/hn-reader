@@ -541,9 +541,13 @@ float ArticleScraper::GetLinkDensity(lxb_dom_node_t *node)
         return  0;
     float linkLength = 0;
 
-
-
-
+    auto elements = GetElementsByTagName(node, "a");
+    for(auto linknode : elements)
+    {
+        auto href = GetAttribute(linknode, "href");
+        float coefficient = (href != "") && std::regex_match(href, REGEXPS.at(RegexPattern::HASH_URL)) ? 0.3f : 1.0f;
+        linkLength += GetInnerText(linknode).size() * coefficient;
+    }
 
     return linkLength / textLength;
 }
