@@ -26,7 +26,10 @@ private:
     std::string GetNodeTextContent(lxb_dom_node_t *node);
     bool IsElementNode(lxb_dom_node_t *node);
     bool IsTextNode(lxb_dom_node_t *node);
+
+    // Get tag name (uppercase, e.g. "DIV")
     std::string GetTagName(lxb_dom_node_t *node);
+    
     std::string GetNodeId(lxb_dom_node_t *node);
     std::string GetNodeClass(lxb_dom_node_t *node);
     std::string GetAttribute(lxb_dom_node_t *node, const std::string &attr_name);
@@ -122,6 +125,8 @@ private:
     // Get innerHTML of a node (serialize subtree to string)
     std::string GetInnerHtml(lxb_dom_node_t *node);
 
+    void Trim(std::string& s);
+    
     enum class RegexPattern
     {
         UNLIKELY_CANDIDATES,
