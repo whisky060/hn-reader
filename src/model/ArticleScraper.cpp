@@ -692,4 +692,23 @@ bool ArticleScraper::HasChildBlockElement(lxb_dom_node_t *element)
     });
 }
 
+// Does this element have exactly one child of given tag, with no real text?
+bool ArticleScraper::HasSingleTagInsideElement(lxb_dom_node_t *element, const std::string &tag)
+{
+    if(!IsElementNode(element))
+        return false;
+
+    auto children = GetChildElements(element);
+    if(children.size() != 1)
+        return false;
+
+    auto child = children[0];
+    if(GetTagName(child) != tag)
+        return false;
+
+    return !SomeNode(GetChildElements(child), [this](lxb_dom_node_t *node) {
+        return IsTextNode(node) && std::regex_match(GetNodeTextContent(node), REGEXPS.at(RegexPattern::HAS_CONTENT));
+    });
+
+}
 
