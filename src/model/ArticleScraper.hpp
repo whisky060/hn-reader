@@ -97,6 +97,10 @@ private:
     // Get text density: ratio of text in specified child tags vs total
     float GetTextDensity(lxb_dom_node_t *node, const std::vector<std::string> &tags);
 
+    bool EveryNode(std::vector<lxb_dom_node_t *> nodes, std::function<bool(lxb_dom_node_t *)> predicate);
+
+    bool SomeNode(std::vector<lxb_dom_node_t *> nodes, std::function<bool(lxb_dom_node_t *)> predicate);
+
     // Is this node phrasing content? (inline elements, text nodes, etc.)
     bool IsPhrasingContent(lxb_dom_node_t *node);
 
@@ -194,7 +198,8 @@ private:
         "P",
         "PRE",
         "TABLE",
-        "UL"};
+        "UL"
+    };
 
     const std::vector<std::string> ALERT_TO_DIV_EXCEPTIONS = {"DIV", "ARTICLE", "SECTION", "P", "OL", "UL"};
 
@@ -217,7 +222,7 @@ private:
 
     // The commented out elements qualify as phrasing content but tend to be
     // removed by readability when put into paragraphs, so we ignore them here.
-    const std::vector<std::string> PHRASING_ELEMS = {
+    const std::unordered_set<std::string> PHRASING_ELEMS = {
         // "CANVAS", "IFRAME", "SVG", "VIDEO",
         "ABBR",
         "AUDIO",

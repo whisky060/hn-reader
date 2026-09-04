@@ -551,3 +551,145 @@ float ArticleScraper::GetLinkDensity(lxb_dom_node_t *node)
 
     return linkLength / textLength;
 }
+
+// Get class weight: +/-25 per positive/negative regex match on class+id
+int ArticleScraper::GetClassWeight(lxb_dom_node_t *node)
+{
+    int weight = 0;
+    std::string className = GetNodeClass(node);
+    std::string idName = GetNodeId(node);
+
+    if(!className.empty())
+    {
+        if(std::regex_search(className, REGEXPS.at(RegexPattern::POSITIVE)))
+            weight += 25;
+        if(std::regex_search(className, REGEXPS.at(RegexPattern::NEGATIVE)))
+            weight -= 25;
+    }
+
+    if(!idName.empty())
+    {
+        if(std::regex_search(idName, REGEXPS.at(RegexPattern::POSITIVE)))
+            weight += 25;
+        if(std::regex_search(idName, REGEXPS.at(RegexPattern::NEGATIVE)))
+            weight -= 25;
+    }
+
+    return weight;
+}
+
+
+// Count occurrences of a character in node's text
+int ArticleScraper::GetCharCount(lxb_dom_node_t *node, char delimiter = ',')
+{
+    return std::count(GetInnerText(node).begin(), GetInnerText(node).end(), delimiter);
+}
+
+
+// Get text density: ratio of text in specified child tags vs total
+float ArticleScraper::GetTextDensity(lxb_dom_node_t *node, const std::vector<std::string> &tags)
+{
+    float totalTextLength = GetInnerText(node).size();
+    if(totalTextLength == 0)
+        return 0;
+
+    float childTextLength = 0;
+    for(const auto& tag : tags)
+    {
+        auto elements = GetElementsByTagName(node, tag);
+        for(auto childNode : elements)
+        {
+            childTextLength += GetInnerText(childNode).size();
+        }
+    }
+
+    return childTextLength / totalTextLength;
+}
+
+
+bool ArticleScraper::EveryNode(std::vector<lxb_dom_node_t *> nodes, std::function<bool(lxb_dom_node_t *)> predicate)
+{
+    for(auto node : nodes)
+    {
+        if(!predicate(node))
+            return false;
+    }
+    return true;
+}
+
+// Is this node phrasing content? (inline elements, text nodes, etc.)
+bool ArticleScraper::IsPhrasingContent(lxb_dom_node_t *node)
+{
+    if(node == nullptr || !IsElementNode(node))
+        return false;    
+
+
+    return IsTextNode(node) || 
+        PHRASING_ELEMS.find(GetTagName(node)) != PHRASING_ELEMS.end() ||
+        ((GetTagName(node) == "A" || GetTagName(node) == "DEL" || GetTagName(node) == "INS") && 
+            EveryNode(GetChildElements(node), [this](lxb_dom_node_t *child) { return IsPhrasingContent(child); }));
+}
+
+
+
+// Is this node whitespace? (empty text node or <br>)
+bool ArticleScraper::IsWhitespace(lxb_dom_node_t *node)
+{
+    if(node == nullptr)
+        return false;
+
+    if(IsTextNode(node))
+    {
+        std::string text = GetNodeTextContent(node);
+        Trim(text);
+        return text.empty();
+    }
+
+    if(IsElementNode(node) && GetTagName(node) == "BR")
+        return true;
+}
+
+
+// Is this element empty? (no text, no meaningful children)
+bool ArticleScraper::IsElementWithoutContent(lxb_dom_node_t *node)
+{
+    if(IsElementNode(node))
+    {
+        std::string text = GetInnerText(node);
+        Trim(text);
+
+        if(!text.empty())
+            return false;
+
+        auto children = GetChildElements(node);
+        return !children.empty() || children.size() == GetElementsByTagName(node, "br").size() + GetElementsByTagName(node, "hr").size();
+    }
+
+    return false;
+}
+
+bool ArticleScraper::SomeNode(std::vector<lxb_dom_node_t *> nodes, std::function<bool(lxb_dom_node_t *)> predicate)
+{
+    for(auto node : nodes)
+    {
+        if(predicate(node))
+            return true;
+    }
+    return false;
+}
+
+
+// Does this element have any block-level child elements?
+bool ArticleScraper::HasChildBlockElement(lxb_dom_node_t *element)
+{
+
+    if(!IsElementNode(element))
+        return false;
+
+    return SomeNode(GetChildElements(element), [this](lxb_dom_node_t *child) { 
+        return DIV_TO_P_ELEMS.find(GetTagName(child)) != DIV_TO_P_ELEMS.end() 
+            || HasChildBlockElement(child);
+    });
+}
+
+
