@@ -3,9 +3,128 @@
 std::string ArticleScraper::operator()(std::string html_page)
 {
     ParseHTML(html_page);
-    ExtractContent();
+    
+    RemoveScripts();
+    PrepDocument();
+
     FreeResources();
     return html_page;
+}
+
+void ArticleScraper::RemoveScripts()
+{
+    auto script_nodes = GetAllNodesWithTag(dom, {"script", "noscript"});
+    for (auto node : script_nodes)
+    {
+        RemoveNode(node);
+    }
+}
+
+lxb_dom_node_t *ArticleScraper::GetLastChild(lxb_dom_node_t *node)
+{
+    return node->last_child;
+}
+
+/**
+   * Replaces 2 or more successive <br> elements with a single <p>.
+   * Whitespace between <br> elements are ignored. For example:
+   *   <div>foo<br>bar<br> <br><br>abc</div>
+   * will become:
+   *   <div>foo<br>bar<p>abc</p></div>
+   */
+void ArticleScraper::ReplaceBrs(lxb_dom_node_t *element)
+{
+    if (element == nullptr)
+        return;
+
+    auto br_nodes = GetAllNodesWithTag(element, {"br"});
+    for (auto br_node : br_nodes)
+    {   
+        auto next = GetNextSibling(br_node);
+
+        // Whether 2 or more <br> elements have been found and replaced with a
+        // <p> block.
+        bool replaced = false;
+
+
+
+        // If we find a <br> chain, remove the <br>s until we hit another node
+        // or non-whitespace. This leaves behind the first <br> in the chain
+        // (which will be replaced with a <p> later).
+        while( next == GetNextNode(next) && GetTagName(next) == "BR")
+        {
+            replaced = true;
+            auto brSibling = GetNextSibling(next);
+            RemoveNode(next);
+            next = brSibling;
+        }
+
+        if (replaced)
+        {
+            auto p = CreateElement("p");
+            if (p != nullptr)
+            {
+                auto parent = GetParent(br_node);
+                ReplaceChild(parent, p, br_node);
+                next = GetNextSibling(p);
+
+                while(next != nullptr)
+                {
+                    if(GetTagName(next) == "BR")
+                    {
+                        auto nextElem = GetNextNode(GetNextSibling(next));
+                        if(nextElem != nullptr && GetTagName(nextElem) == "BR")
+                        {
+                            break;
+                        }
+                        
+                    }
+                   
+                    if(!IsPhrasingContent(next))
+                    {
+                        break;
+                    }
+
+                    auto sibling = GetNextSibling(next);
+                    AppendChild(p, next);
+                    next = sibling;
+                }
+                
+                while(GetLastChild(p) != nullptr && IsWhitespace(GetLastChild(p)))
+                {
+                    RemoveNode(GetLastChild(p));
+                }
+
+                if(GetTagName(GetParent(p)) == "P")
+                {
+                    SetNodeTag(GetParent(p), "DIV");
+                }
+                
+            }
+        }
+    }
+}
+
+void ArticleScraper::ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes, const std::string &newTag)
+{
+    for (auto node : nodes)
+    {
+        SetNodeTag(node, newTag);
+    }
+}
+
+void ArticleScraper::PrepDocument()
+{
+    auto doc = this->doc;
+    auto style_nodes = GetAllNodesWithTag(dom, {"style"}); 
+    if(doc->body)
+    {
+        ReplaceBrs(dom);
+    }
+
+    // this._replaceNodeTags(this._getAllNodesWithTag(doc, ["font"]), "SPAN");
+    auto font_nodes = GetAllNodesWithTag(dom, {"font"});
+    ReplaceNodeTags(font_nodes, "SPAN");
 }
 
 void ArticleScraper::ParseHTML(std::string html_page)
@@ -40,10 +159,6 @@ void ArticleScraper::FreeResources()
     dom = nullptr;
 }
 
-void ArticleScraper::ExtractContent()
-{
-    UnwrapNoScriptImages();
-}
 
 /**
  * Find all <noscript> that are located after <img> nodes, and which contain only one
@@ -462,13 +577,12 @@ lxb_dom_node_t *ArticleScraper::SetNodeTag(lxb_dom_node_t *node, const std::stri
     auto parent = GetParent(node);
     ReplaceChild(parent, replacement, node);
 
-    /*
-        TODO 
-         if (node.readability) {
-                replacement.readability = node.readability;
-        }
+    if(HasAttribute(node, "readability"))
+    {
+        auto readability_value = GetAttribute(node, "readability");
+        SetAttribute(replacement, "readability", readability_value);
+    }
 
-    */
     if(IsElementNode(node))
     {
         auto old_element = lxb_dom_interface_element(node);
@@ -776,3 +890,62 @@ bool ArticleScraper::IsProbablyVisible(lxb_dom_node_t *node)
 
     return true;
 }
+
+
+
+// Initialize a node with base content score from its tag type
+void ArticleScraper::InitializeNode(lxb_dom_node_t *node){
+    
+    int readability = 0;
+
+    auto tagName = GetTagName(node);
+    if(tagName == "DIV")
+    {
+        readability += 5;
+    }
+    else if(tagName == "PRE" || tagName == "TD" || tagName == "BLOCKQUOTE")
+    {
+        readability += 3;
+    }
+    else if(tagName == "ADDRESS" || tagName == "OL" || tagName == "UL" || tagName == "DL" || tagName == "DD" || tagName == "DT" || tagName == "LI" || tagName == "FORM")
+    {
+        readability -= 3;
+    }
+    else if(tagName == "H1" || tagName == "H2" || tagName == "H3" || tagName == "H4" || tagName == "H5" || tagName == "H6" || tagName == "TH")
+    {
+        readability -= 5;
+        
+    }
+
+    readability += GetClassWeight(node);
+    SetAttribute(node, "readability", std::to_string(readability));
+
+}
+
+std::string ArticleScraper::GetInnerHtml(lxb_dom_node_t *node)
+{
+    if (node == nullptr) {
+        return std::string();
+    }
+
+    lexbor_str_t str = {0};
+    lxb_status_t status;
+
+    for (lxb_dom_node_t *child = GetFirstChild(node); child != nullptr; child = GetNextNode(child)) {
+        status = lxb_html_serialize_tree_str(child, &str);
+        if (status != LXB_STATUS_OK) {
+            break;
+        }
+    }
+
+    std::string result;
+    if (str.data != nullptr) {
+        result.assign(reinterpret_cast<const char *>(str.data), str.length);
+
+        lxb_dom_document_t *doc = node->owner_document;
+        lexbor_str_destroy(&str, doc->text, true);
+    }
+
+    return result;
+}
+

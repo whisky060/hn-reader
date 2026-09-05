@@ -14,7 +14,9 @@ class ArticleScraper
 {
 private:
     void ParseHTML(std::string html_page);
-    void ExtractContent();
+    void RemoveScripts();
+    void PrepDocument();
+    lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
     void FreeResources();
 
@@ -37,8 +39,11 @@ private:
     void SetAttribute(lxb_dom_node_t *node, const std::string &attr_name, const std::string &value);
     void RemoveAttribute(lxb_dom_node_t *node, const std::string &attr_name);
     lxb_dom_node_t *GetFirstChild(lxb_dom_node_t *node);
+    lxb_dom_node_t *GetLastChild(lxb_dom_node_t *node);
     lxb_dom_node_t *GetNextSibling(lxb_dom_node_t *node);
     lxb_dom_node_t *GetPrevSibling(lxb_dom_node_t *node);
+
+    void ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes, const std::string &newTag);
 
     // Get first ELEMENT child (skips text/comment nodes)
     lxb_dom_node_t *GetFirstChildElement(lxb_dom_node_t *node);
@@ -100,6 +105,8 @@ private:
     bool EveryNode(std::vector<lxb_dom_node_t *> nodes, std::function<bool(lxb_dom_node_t *)> predicate);
 
     bool SomeNode(std::vector<lxb_dom_node_t *> nodes, std::function<bool(lxb_dom_node_t *)> predicate);
+
+    void ReplaceBrs(lxb_dom_node_t *element);
 
     // Is this node phrasing content? (inline elements, text nodes, etc.)
     bool IsPhrasingContent(lxb_dom_node_t *node);
