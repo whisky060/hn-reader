@@ -191,7 +191,7 @@ std::string ArticleScraper::GetAttribute(lxb_dom_node_t *node, const std::string
     size_t len = 0;
     const lxb_char_t *attr = lxb_dom_element_get_attribute(lxb_dom_interface_element(node),
                                                            reinterpret_cast<const lxb_char_t *>(const_cast<char *>(attr_name.c_str())),
-                                                           len, nullptr);
+                                                           attr_name.size(), &len);
     std::string result(reinterpret_cast<const char *>(attr), len);
 
     return result;
@@ -712,3 +712,67 @@ bool ArticleScraper::HasSingleTagInsideElement(lxb_dom_node_t *element, const st
 
 }
 
+// Does this node have an ancestor with the given tag name (up to maxDepth)?
+bool ArticleScraper::HasAncestorTag(lxb_dom_node_t *node, const std::string &tagName,
+                    size_t maxDepth = 3, std::function<bool(lxb_dom_node_t*)> filter = nullptr)
+{
+    int depth = 0;
+    while(GetParent(node))
+    {
+        if(maxDepth > 0 && depth > maxDepth)
+            return false;
+
+        if(GetTagName(GetParent(node)) == tagName && (!filter || filter(GetParent(node))))
+            return true;
+
+        node = GetParent(node);
+        depth++;
+    }
+
+    return false;
+}
+
+
+std::string ArticleScraper::GetStyleAttribute(lxb_dom_node_t *node, const std::string &property)
+{
+    if(node == nullptr || !IsElementNode(node))
+        return "";
+
+    auto style = GetAttribute(node, "style");
+    if(style.empty())
+        return "";
+
+    std::regex pattern(property + R"(\s*:\s*([^;]+))", std::regex_constants::icase);
+    std::smatch match;
+    if(std::regex_search(style, match, pattern))
+    {
+        return match[1].str();
+    }
+
+    return "";
+}
+
+// Is this node probably visible? (not display:none, not hidden, etc.)
+bool ArticleScraper::IsProbablyVisible(lxb_dom_node_t *node)
+{
+    
+    if(node == nullptr || !IsElementNode(node))
+        return false;
+        
+    auto display = GetStyleAttribute(node, "display");
+    if (!display.empty() && display == "none")
+        return false;
+    
+    auto visibility = GetStyleAttribute(node, "visibility");
+    if (!visibility.empty() && visibility == "hidden")
+        return false;
+
+    if (HasAttribute(node, "hidden"))
+        return false;
+
+    
+    if(HasAttribute(node, "aria-hidden") && GetAttribute(node, "aria-hidden") == "true" && GetNodeClass(node).find("fallback-image") == std::string::npos)
+        return false;
+
+    return true;
+}

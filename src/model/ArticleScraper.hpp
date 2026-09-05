@@ -117,11 +117,12 @@ private:
     bool HasSingleTagInsideElement(lxb_dom_node_t *element, const std::string &tag);
 
     // Does this node have an ancestor with the given tag name (up to maxDepth)?
-    bool HasAncestorTag(lxb_dom_node_t *node, const std::string &tagName,
-                        size_t maxDepth = 3);
+    bool HasAncestorTag(lxb_dom_node_t *node, const std::string &tagName, size_t maxDepth = 3, std::function<bool(lxb_dom_node_t*)> filter = nullptr);
 
     // Is this node probably visible? (not display:none, not hidden, etc.)
     bool IsProbablyVisible(lxb_dom_node_t *node);
+
+    std::string GetStyleAttribute(lxb_dom_node_t *node, const std::string &property);
 
     // Initialize a node with base content score from its tag type
     void InitializeNode(lxb_dom_node_t *node);
