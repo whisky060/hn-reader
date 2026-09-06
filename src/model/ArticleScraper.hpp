@@ -19,6 +19,7 @@ private:
     lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
     void FreeResources();
+    std::string GetArticleTitle();
 
     // helpers
     std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);
@@ -28,6 +29,7 @@ private:
     std::string GetNodeTextContent(lxb_dom_node_t *node);
     bool IsElementNode(lxb_dom_node_t *node);
     bool IsTextNode(lxb_dom_node_t *node);
+    bool IsValidByLine(lxb_dom_node_t *node, std::string& matchString);
 
     // Get tag name (uppercase, e.g. "DIV")
     std::string GetTagName(lxb_dom_node_t *node);
@@ -44,6 +46,8 @@ private:
     lxb_dom_node_t *GetPrevSibling(lxb_dom_node_t *node);
 
     void ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes, const std::string &newTag);
+
+    bool HeaderDuplicateTitle(lxb_dom_node_t* element);
 
     // Get first ELEMENT child (skips text/comment nodes)
     lxb_dom_node_t *GetFirstChildElement(lxb_dom_node_t *node);
@@ -168,6 +172,10 @@ private:
 
     lxb_html_document_t *doc;
     lxb_dom_node_t *dom;
+    std::string articleLang;
+    std::string articleByline;
+    std::string articleTitle;
+
 
     // Max number of nodes supported by this parser. Default: 0 (no limit)
     const int DEFAULT_MAX_ELEMS_TO_PARSE = 0;
