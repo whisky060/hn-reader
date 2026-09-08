@@ -176,6 +176,7 @@ private:
     std::string articleLang;
     std::string articleByline;
     std::string articleTitle;
+    int nbTopCandidates;
 
 
     // Max number of nodes supported by this parser. Default: 0 (no limit)
@@ -186,7 +187,7 @@ private:
     const int DEFAULT_N_TOP_CANDIDATES = 5;
 
     // Element tags to score by default.
-    const std::vector<std::string> DEFAULT_TAGS_TO_SCORE = {
+    const std::unordered_set<std::string> DEFAULT_TAGS_TO_SCORE = {
         "section",
         "h2",
         "h3",

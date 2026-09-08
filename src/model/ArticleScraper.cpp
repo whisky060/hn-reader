@@ -1,12 +1,14 @@
 #include "model/ArticleScraper.hpp"
 #include <iostream>
 #include <sstream>
+#include <math.h>
 
 std::string ArticleScraper::operator()(std::string html_page)
 {
 
     articleByline = "";
     articleTitle = GetArticleTitle();
+    nbTopCandidates = DEFAULT_N_TOP_CANDIDATES;
     ParseHTML(html_page);
 
     RemoveScripts();
@@ -160,7 +162,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page)
         // class name "comment", etc), and turn divs into P tags where they have been
         // used inappropriately (as in, where they contain no other block level elements.)
 
-        std::unordered_map<lxb_dom_element_t *, int> elementsToScore;
+        std::vector<lxb_dom_node_t *> elementsToScore;
         auto node = lxb_dom_interface_node(doc->dom_document.element);
         bool shouldRemoveTitleHeader = true;
 
@@ -220,21 +222,20 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page)
                 continue;
             }
 
-            if(stripUnlikelyCandidates)
+            if (stripUnlikelyCandidates)
             {
-                if(std::regex_search(matchString, REGEXPS.at(RegexPattern::UNLIKELY_CANDIDATES)) &&
-                   !std::regex_search(matchString, REGEXPS.at(RegexPattern::OK_MAYBE_ITS_A_CANDIDATE)) &&
-                    !HasAncestorTag(node, "table")&&
+                if (std::regex_search(matchString, REGEXPS.at(RegexPattern::UNLIKELY_CANDIDATES)) &&
+                    !std::regex_search(matchString, REGEXPS.at(RegexPattern::OK_MAYBE_ITS_A_CANDIDATE)) &&
+                    !HasAncestorTag(node, "table") &&
                     !HasAncestorTag(node, "code") &&
                     GetTagName(node) != "BODY" &&
-                    GetTagName(node) != "A"
-                )
+                    GetTagName(node) != "A")
                 {
                     node = RemoveAndGetNext(node);
                     continue;
                 }
 
-                if(UNLIKELY_ROLES.find(GetAttribute(node, "role")) != UNLIKELY_ROLES.end())
+                if (UNLIKELY_ROLES.find(GetAttribute(node, "role")) != UNLIKELY_ROLES.end())
                 {
                     node = RemoveAndGetNext(node);
                     continue;
@@ -242,7 +243,210 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page)
             }
 
             // Remove DIV, SECTION, and HEADER nodes without any content(e.g. text, image, video, or iframe).
+            auto tag = GetTagName(node);
+            if ((
+                    tag == "DIV" ||
+                    tag == "SECTION" ||
+                    tag == "HEADER" ||
+                    tag == "H1" ||
+                    tag == "H2" ||
+                    tag == "H3" ||
+                    tag == "H4" ||
+                    tag == "H5" ||
+                    tag == "H6") &&
+                IsElementWithoutContent(node))
+            {
+                node = RemoveAndGetNext(node);
+                continue;
+            }
+            if (DEFAULT_TAGS_TO_SCORE.find(GetTagName(node)) != DEFAULT_TAGS_TO_SCORE.end())
+            {
+                elementsToScore.push_back(node);
+            }
+
+            if (GetTagName(node) == "DIV")
+            {
+                auto childNode = GetFirstChild(node);
+                while (childNode)
+                {
+                    auto nextSibling = GetNextSibling(childNode);
+                    if (IsPhrasingContent(childNode))
+                    {
+
+                        auto doc_fragment = lxb_dom_document_create_document_fragment(&doc->dom_document);
+                        auto fragment = lxb_dom_interface_node(doc_fragment);
+                        do
+                        {
+                            nextSibling = GetNextSibling(childNode);
+                            AppendChild(fragment, childNode);
+                            childNode = nextSibling;
+                        } while (childNode && IsPhrasingContent(childNode));
+
+                        // Trim leading and trailing whitespace from the fragment.
+                        auto fragmentFirstChild = GetFirstChild(fragment);
+                        while (
+                            fragmentFirstChild &&
+                            IsWhitespace(fragmentFirstChild))
+                        {
+                            RemoveNode(fragmentFirstChild);
+                            fragmentFirstChild = GetFirstChild(fragment);
+                        }
+                        auto fragmentLastChild = GetLastChild(fragment);
+                        while (
+                            fragmentLastChild &&
+                            IsWhitespace(fragmentLastChild))
+                        {
+                            RemoveNode(fragmentLastChild);
+                            fragmentLastChild = GetLastChild(fragment);
+                        }
+
+                        // If the fragment contains anything, wrap it in a paragraph and
+                        // insert it before the next non-phrasing node.
+
+                        if (GetFirstChild(fragment))
+                        {
+                            auto p = CreateElement("p");
+                            AppendChild(p, fragment);
+                            InsertBefore(node, p, nextSibling);
+                        }
+                    }
+                    childNode = nextSibling;
+                }
+                // Sites like http://mobile.slate.com encloses each paragraph with a DIV
+                // element. DIVs with only a P element inside and no text content can be
+                // safely converted into plain P elements to avoid confusing the scoring
+                // algorithm with DIVs with are, in practice, paragraphs.
+
+                if (
+                    HasSingleTagInsideElement(node, "p") &&
+                    GetLinkDensity(node) < 0.25)
+                {
+                    auto newNode = GetChildElements(node)[0];
+                    auto parentNode = GetParent(node);
+                    ReplaceChild(parentNode, newNode, node);
+                    node = newNode;
+                    elementsToScore.push_back(node);
+                }
+                else if (!HasChildBlockElement(node))
+                {
+                    node = SetNodeTag(node, "p");
+                    elementsToScore.push_back(node);
+                }
+            }
+            node = GetNextNode(node);
         }
+        /**
+         * Loop through all paragraphs, and assign a score to them based on how content-y they look.
+         * Then add their score to their parent node.
+         *
+         * A score is determined by things like number of commas, class names, etc. Maybe eventually link density.
+         **/
+        std::vector<lxb_dom_node_t *> candidates;
+        for (auto elementToScore : elementsToScore)
+        {
+            if (!GetParent(elementToScore) || GetTagName(GetParent(elementToScore)) == "")
+            {
+                break;
+            }
+            auto innerText = GetInnerText(elementToScore);
+            if (innerText.size() < 25)
+            {
+                break;
+            }
+            auto ancestors = GetAncestors(elementToScore, 5);
+            if (ancestors.size() == 0)
+                break;
+            int contentScore = 0;
+
+            // Add a point for the paragraph itself as a base.
+            contentScore += 1;
+
+            std::sregex_token_iterator it(innerText.begin(),
+                                          innerText.end(),
+                                          REGEXPS.at(RegexPattern::COMMAS), -1);
+            std::sregex_token_iterator end;
+            size_t count = 0;
+            for (; it != end; ++it)
+            {
+                count++;
+            }
+
+            contentScore += count == 0 ? 1 : count;
+            contentScore += std::min((int)innerText.size() / 100, 3);
+            int level = 0;
+            int scoreDivider;
+            for (auto &ancestor : ancestors)
+            {
+                if (GetTagName(ancestor) == "" ||
+                    !GetParent(ancestor) ||
+                    GetTagName(GetParent(ancestor)) == "")
+                {
+                    break;
+                }
+
+                if (!HasAttribute(ancestor, "readability"))
+                {
+                    InitializeNode(ancestor);
+                    candidates.push_back(ancestor);
+                }
+
+                // Node score divider:
+                // - parent:             1 (no division)
+                // - grandparent:        2
+                // - great grandparent+: ancestor level * 3
+                if (level == 0)
+                {
+                    scoreDivider = 1;
+                }
+                else if (level == 1)
+                {
+                    scoreDivider = 2;
+                }
+                else
+                    scoreDivider = level * 3;
+
+                auto readability = GetAttribute(ancestor, "readability");
+                auto readabilityValue = std::stoi(readability);
+                readabilityValue += contentScore / scoreDivider;
+                SetAttribute(ancestor, "readability", std::to_string(readabilityValue));
+                level++;
+            }
+        }
+        // After we've calculated scores, loop through all of the possible
+        // candidate nodes we found and find the one with the highest score.
+        std::vector<lxb_dom_node_t *> topCandidates;
+        for (size_t c = 0, cl = candidates.size(); c < cl; c++)
+        {
+            auto candidate = candidates[c];
+            // Scale the final candidates score based on link density. Good content
+            // should have a relatively small link density (5% or less) and be mostly
+            // unaffected by this operation.
+            auto readability = GetAttribute(candidate, "readability");
+            auto readabilityValue = std::stoi(readability);
+            auto candidateScore = readabilityValue * (1-GetLinkDensity(candidate));
+            SetAttribute(candidate, "readability", std::to_string(candidateScore));
+
+            for(size_t t = 0; t < nbTopCandidates ; t++)
+            {
+                auto aTopCandidate = topCandidates[t];
+                int topCandidateScore = 0;
+                if(aTopCandidate)
+                    topCandidateScore = std::stoi(GetAttribute(aTopCandidate, "readability"));
+
+                if(!aTopCandidate || candidateScore > topCandidateScore)
+                {
+                    topCandidates.insert(topCandidates.begin() + t, candidate);
+                    if(topCandidates.size() > nbTopCandidates)
+                    {
+                        topCandidates.pop_back();
+                    }
+                    break;
+                }
+
+            }
+            
+        }
+        
     }
 }
 
@@ -271,31 +475,31 @@ double ArticleScraper::TextSimilarity(std::string textA, std::string textB)
 
     auto tokensA = tokenize(textA);
     auto tokensB = tokenize(textB);
-    if(!tokensA.size() || !tokensB.size())
+    if (!tokensA.size() || !tokensB.size())
         return 0.0;
 
     std::vector<std::string> uniqTOkensB;
-    for(auto token : tokensB)
+    for (auto token : tokensB)
     {
         auto found = std::find(tokensA.begin(), tokensA.end(), token) != tokensA.end();
-        if(!found){
+        if (!found)
+        {
             uniqTOkensB.push_back(token);
         }
     }
-    auto join = [](std::vector<std::string> tokens){
+    auto join = [](std::vector<std::string> tokens)
+    {
         std::string joinedString = "";
-        for(int i = 0;i<tokens.size();i++)
+        for (int i = 0; i < tokens.size(); i++)
         {
-            if(i>0)
-                joinedString+=" ";
-            joinedString+=tokens[i];
-            
+            if (i > 0)
+                joinedString += " ";
+            joinedString += tokens[i];
         }
         return joinedString;
     };
     double distanceB = join(uniqTOkensB).size() / join(tokensB).size();
     return 1 - distanceB;
-    
 }
 
 bool ArticleScraper::HeaderDuplicateTitle(lxb_dom_node_t *element)
@@ -836,7 +1040,10 @@ void ArticleScraper::InsertBefore(lxb_dom_node_t *parent, lxb_dom_node_t *newChi
 lxb_dom_node_t *ArticleScraper::CreateElement(const std::string &tagName)
 {
 
-    auto element = lxb_dom_document_create_element(&doc->dom_document, reinterpret_cast<const lxb_char_t *>(tagName.c_str()), tagName.size());
+    auto element = lxb_dom_document_create_element(&doc->dom_document,
+                                                   reinterpret_cast<const lxb_char_t *>(tagName.c_str()),
+                                                   tagName.size(),
+                                                   nullptr);
 
     if (element == nullptr)
         return nullptr;
