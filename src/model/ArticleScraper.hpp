@@ -48,6 +48,7 @@ private:
     void ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes, const std::string &newTag);
 
     bool HeaderDuplicateTitle(lxb_dom_node_t* element);
+    double TextSimilarity(std::string textA, std::string textB);
 
     // Get first ELEMENT child (skips text/comment nodes)
     lxb_dom_node_t *GetFirstChildElement(lxb_dom_node_t *node);
@@ -196,14 +197,15 @@ private:
         "td",
         "pre"};
 
-    const std::vector<std::string> UNLIKELY_ROLES = {
+    const std::unordered_set<std::string> UNLIKELY_ROLES = {
         "menu",
         "menubar",
         "complementary",
         "navigation",
         "alert",
         "alertdialog",
-        "dialog"};
+        "dialog"
+    };
 
     const std::unordered_set<std::string> DIV_TO_P_ELEMS = {
         "BLOCKQUOTE",

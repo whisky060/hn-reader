@@ -70,19 +70,60 @@ std::string ArticleScraper::GetArticleTitle()
             curTitle = std::regex_replace(origTitle, leading_re, "");
         }
     }
-    else if(curTitle.find(": ") != std::string::npos){
+    else if (curTitle.find(": ") != std::string::npos)
+    {
         // Check if we have an heading containing this exact string, so we
         // could assume it's the full title.
         auto headings = GetAllNodesWithTag(lxb_dom_interface_node(doc), {"h1", "h2"});
         auto trimmedTitle = curTitle;
         Trim(trimmedTitle);
-        match = SomeNode(headings, [this,trimmedTitle](lxb_dom_node_t* node){
-            auto text = GetNodeTextContent(node);
-            Trim(text);
-            return text == trimmedTitle;
+        match = SomeNode(headings, [this, trimmedTitle](lxb_dom_node_t *node)
+                         {
+                             auto text = GetNodeTextContent(node);
+                             Trim(text);
+                             return text == trimmedTitle; });
 
-        })
+        if (!match)
+        {
+            curTitle = origTitle.substr(origTitle.find_last_of(":") + 1);
+            if (wordCount(curTitle) < 3)
+            {
+                curTitle = origTitle.substr(origTitle.find(":") + 1);
+            }
+            else if (wordCount(origTitle.substr(0, origTitle.find(":"))) > 5)
+            {
+                curTitle = origTitle;
+            }
+        }
     }
+    else if (curTitle.size() > 150 || curTitle.size() < 15)
+    {
+        auto hOnes = GetElementsByTagName(lxb_dom_interface_node(doc), "h1");
+        if (hOnes.size() == 1)
+        {
+            curTitle = GetInnerText(hOnes[0]);
+        }
+    }
+
+    Trim(curTitle);
+    curTitle = std::regex_replace(curTitle, REGEXPS.at(RegexPattern::NORMALIZE), " ");
+
+    // If we now have 4 words or fewer as our title, and either no
+    // 'hierarchical' separators (\, /, > or ») were found in the original
+    // title or we decreased the number of words by more than 1 word, use
+    // the original title.
+    auto curTitleWordCount = wordCount(curTitle);
+
+    if (curTitleWordCount <= 4 &&
+        (!titlehadHierarchicalSeparators ||
+         curTitleWordCount != wordCount(
+                                  std::regex_replace(origTitle, sep_between_spaces, "")) -
+                                  1))
+    {
+        curTitle = origTitle;
+    }
+
+    return curTitle;
 }
 
 bool ArticleScraper::IsValidByLine(lxb_dom_node_t *node, std::string &matchString)
@@ -172,9 +213,100 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page)
                 continue;
             }
 
-            if (shouldRemoveTitleHeader &&)
+            if (shouldRemoveTitleHeader && HeaderDuplicateTitle(node))
+            {
+                shouldRemoveTitleHeader = false;
+                node = RemoveAndGetNext(node);
+                continue;
+            }
+
+            if(stripUnlikelyCandidates)
+            {
+                if(std::regex_search(matchString, REGEXPS.at(RegexPattern::UNLIKELY_CANDIDATES)) &&
+                   !std::regex_search(matchString, REGEXPS.at(RegexPattern::OK_MAYBE_ITS_A_CANDIDATE)) &&
+                    !HasAncestorTag(node, "table")&&
+                    !HasAncestorTag(node, "code") &&
+                    GetTagName(node) != "BODY" &&
+                    GetTagName(node) != "A"
+                )
+                {
+                    node = RemoveAndGetNext(node);
+                    continue;
+                }
+
+                if(UNLIKELY_ROLES.find(GetAttribute(node, "role")) != UNLIKELY_ROLES.end())
+                {
+                    node = RemoveAndGetNext(node);
+                    continue;
+                }
+            }
+
+            // Remove DIV, SECTION, and HEADER nodes without any content(e.g. text, image, video, or iframe).
         }
     }
+}
+
+double ArticleScraper::TextSimilarity(std::string textA, std::string textB)
+{
+    auto tokenize = [this](std::string s)
+    {
+        std::vector<std::string> tokens;
+        auto pattern = this->REGEXPS.at(RegexPattern::TOKENIZE);
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
+                       { return std::tolower(c); });
+        std::sregex_token_iterator it(s.begin(), s.end(), pattern, -1);
+        std::sregex_token_iterator end;
+
+        for (; it != end; ++it)
+        {
+            std::string token = *it;
+            if (!token.empty())
+            { // equivalent of filter(Boolean)
+                tokens.push_back(token);
+            }
+        }
+
+        return tokens;
+    };
+
+    auto tokensA = tokenize(textA);
+    auto tokensB = tokenize(textB);
+    if(!tokensA.size() || !tokensB.size())
+        return 0.0;
+
+    std::vector<std::string> uniqTOkensB;
+    for(auto token : tokensB)
+    {
+        auto found = std::find(tokensA.begin(), tokensA.end(), token) != tokensA.end();
+        if(!found){
+            uniqTOkensB.push_back(token);
+        }
+    }
+    auto join = [](std::vector<std::string> tokens){
+        std::string joinedString = "";
+        for(int i = 0;i<tokens.size();i++)
+        {
+            if(i>0)
+                joinedString+=" ";
+            joinedString+=tokens[i];
+            
+        }
+        return joinedString;
+    };
+    double distanceB = join(uniqTOkensB).size() / join(tokensB).size();
+    return 1 - distanceB;
+    
+}
+
+bool ArticleScraper::HeaderDuplicateTitle(lxb_dom_node_t *element)
+{
+    auto nodeTag = GetTagName(element);
+    if (nodeTag != "H1" && nodeTag != "H2")
+        return false;
+
+    auto heading = GetInnerText(element, false);
+
+    return TextSimilarity(this->articleTitle, heading) > 0.75;
 }
 
 void ArticleScraper::RemoveScripts()
