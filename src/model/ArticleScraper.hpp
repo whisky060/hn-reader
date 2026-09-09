@@ -220,7 +220,7 @@ private:
         "UL"
     };
 
-    const std::vector<std::string> ALERT_TO_DIV_EXCEPTIONS = {"DIV", "ARTICLE", "SECTION", "P", "OL", "UL"};
+    const std::unordered_set<std::string> ALTER_TO_DIV_EXCEPTIONS = {"DIV", "ARTICLE", "SECTION", "P", "OL", "UL"};
 
     const std::vector<std::string> PRESENTATIONAL_ATTRIBUTES = {
         "align",

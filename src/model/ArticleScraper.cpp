@@ -423,30 +423,213 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page)
             // unaffected by this operation.
             auto readability = GetAttribute(candidate, "readability");
             auto readabilityValue = std::stoi(readability);
-            auto candidateScore = readabilityValue * (1-GetLinkDensity(candidate));
+            auto candidateScore = readabilityValue * (1 - GetLinkDensity(candidate));
             SetAttribute(candidate, "readability", std::to_string(candidateScore));
 
-            for(size_t t = 0; t < nbTopCandidates ; t++)
+            for (size_t t = 0; t < nbTopCandidates; t++)
             {
-                auto aTopCandidate = topCandidates[t];
+                lxb_dom_node_t *aTopCandidate = nullptr;
+                if (t < topCandidates.size())
+                    aTopCandidate = topCandidates[t];
+
                 int topCandidateScore = 0;
-                if(aTopCandidate)
+                if (aTopCandidate)
                     topCandidateScore = std::stoi(GetAttribute(aTopCandidate, "readability"));
 
-                if(!aTopCandidate || candidateScore > topCandidateScore)
+                if (!aTopCandidate || candidateScore > topCandidateScore)
                 {
                     topCandidates.insert(topCandidates.begin() + t, candidate);
-                    if(topCandidates.size() > nbTopCandidates)
+                    if (topCandidates.size() > nbTopCandidates)
                     {
                         topCandidates.pop_back();
                     }
                     break;
                 }
-
             }
-            
         }
-        
+        lxb_dom_node_t *topCandidate = topCandidates.size() != 0 ? topCandidates[0] : nullptr;
+        bool neededToCreateCandidate = false;
+        lxb_dom_node_t *parentOfTopCandidate = nullptr;
+        // If we still have no top candidate, just use the body as a last resort.
+        // We also have to copy the body node so it is something we can modify.
+        if (topCandidate == nullptr || GetTagName(topCandidate) == "BODY")
+        {
+            topCandidate = CreateElement("DIV");
+            neededToCreateCandidate = true;
+            while (GetFirstChild(page))
+            {
+                AppendChild(topCandidate, GetFirstChild(page));
+            }
+            AppendChild(page, topCandidate);
+            InitializeNode(topCandidate);
+        }
+        else if (topCandidate != nullptr)
+        {
+            // Find a better top candidate node if it contains (at least three) nodes which belong to `topCandidates` array
+            // and whose scores are quite closed with current `topCandidate` node
+            std::vector<std::vector<lxb_dom_node_t *>> alternativeCandidateAncestors;
+            for (size_t i = 1; i < topCandidates.size(); i++)
+            {
+                auto altTopCandidate = topCandidates[i];
+                double altTopCandidateValue = std::stod(GetAttribute(altTopCandidate, "readability"));
+                double topCandidateValue = std::stod(GetAttribute(topCandidate, "readability"));
+                if (altTopCandidateValue / topCandidateValue >= 0.75)
+                {
+                    alternativeCandidateAncestors.push_back(GetAncestors(altTopCandidate));
+                }
+            }
+            size_t MINIMUM_TOPCANDIDATES = 3;
+            if (alternativeCandidateAncestors.size() >= MINIMUM_TOPCANDIDATES)
+            {
+                parentOfTopCandidate = GetParent(topCandidate);
+                while (GetTagName(parentOfTopCandidate) != "BODY")
+                {
+                    int listsContainingTHisAncestor = 0;
+                    for (
+                        size_t ancestorIndex = 0;
+                        ancestorIndex < alternativeCandidateAncestors.size() &&
+                        listsContainingTHisAncestor < MINIMUM_TOPCANDIDATES;
+                        ancestorIndex++)
+                    {
+                        auto ancestor = alternativeCandidateAncestors[ancestorIndex];
+                        bool contains = std::find(ancestor.begin(), ancestor.end(), parentOfTopCandidate) != ancestor.end();
+                        listsContainingTHisAncestor += contains ? 1 : 0;
+                    }
+                    if (listsContainingTHisAncestor >= MINIMUM_TOPCANDIDATES)
+                    {
+                        topCandidate = parentOfTopCandidate;
+                        break;
+                    }
+                    parentOfTopCandidate = GetParent(parentOfTopCandidate);
+                }
+            }
+            if (!HasAttribute(topCandidate, "readability"))
+            {
+                InitializeNode(topCandidate);
+            }
+            // Because of our bonus system, parents of candidates might have scores
+            // themselves. They get half of the node. There won't be nodes with higher
+            // scores than our topCandidate, but if we see the score going *up* in the first
+            // few steps up the tree, that's a decent sign that there might be more content
+            // lurking in other places that we want to unify in. The sibling stuff
+            // below does some of that - but only if we've looked high enough up the DOM
+            // tree.
+            parentOfTopCandidate = GetParent(topCandidate);
+            double latsScore = std::stod(GetAttribute(topCandidate, "readability"));
+            double scoreThreshold = latsScore / 3;
+            while (parentOfTopCandidate && GetTagName(parentOfTopCandidate) != "BODY")
+            {
+                if (!HasAttribute(parentOfTopCandidate, "readability"))
+                {
+                    parentOfTopCandidate = GetParent(parentOfTopCandidate);
+                    continue;
+                }
+                double parentScore = std::stod(GetAttribute(parentOfTopCandidate, "readability"));
+                if (parentScore < scoreThreshold)
+                {
+                    break;
+                }
+
+                if (parentScore > latsScore)
+                {
+                    topCandidate = parentOfTopCandidate;
+                    break;
+                }
+                latsScore = parentScore;
+                parentOfTopCandidate = GetParent(parentOfTopCandidate);
+            }
+            // If the top candidate is the only child, use parent instead. This will help sibling
+            // joining logic when adjacent content is actually located in parent's sibling node.
+            parentOfTopCandidate = GetParent(topCandidate);
+            while (
+                parentOfTopCandidate &&
+                GetTagName(parentOfTopCandidate) != "BODY" &&
+                GetChildElements(parentOfTopCandidate).size() == 1)
+            {
+                topCandidate = parentOfTopCandidate;
+                parentOfTopCandidate = GetParent(topCandidate);
+            }
+            if (!HasAttribute(topCandidate, "readability"))
+            {
+                InitializeNode(topCandidate);
+            }
+        }
+
+        // Now that we have the top candidate, look through its siblings for content
+        // that might also be related. Things like preambles, content split by ads
+        // that we removed, etc.
+        auto articleContent = CreateElement("DIV");
+        if (isPaging)
+        {
+            SetAttribute(articleContent, "id", "readability-content");
+        }
+        double siblingScoreThreshold = std::max(
+            10.0,
+            std::stod(GetAttribute(topCandidate, "readability")) * 0.2);
+        parentOfTopCandidate = GetParent(topCandidate);
+        auto siblings = GetChildElements(parentOfTopCandidate);
+        for (size_t s = 0, sl = siblings.size(); s < sl; s++)
+        {
+            auto sibling = siblings[s];
+            bool append = false;
+            if (sibling == topCandidate)
+            {
+                append = true;
+            }
+            else
+            {
+                double contentBounds = 0;
+                if (
+                    GetNodeClass(sibling) == GetNodeClass(topCandidate) &&
+                    GetNodeClass(topCandidate) == "")
+                {
+                    contentBounds += std::stod(GetAttribute(topCandidate, "readability")) * 0.2;
+                }
+
+                if (
+                    HasAttribute(sibling, "readability") &&
+                    std::stod(GetAttribute(sibling, "readability")) + contentBounds >= siblingScoreThreshold)
+                {
+                    append = true;
+                }
+                else if (GetTagName(sibling) == "P")
+                {
+                    auto linkDensity = GetLinkDensity(sibling);
+                    auto nodeContent = GetInnerText(sibling);
+                    auto nodeLength = nodeContent.size();
+
+                    if (nodeLength > 80 && linkDensity < 0.25)
+                    {
+                        append = true;
+                    }
+                    else if (
+                        nodeLength < 80 &&
+                        nodeLength > 0 &&
+                        linkDensity == 0 &&
+                        std::regex_search(nodeContent, std::regex(R"(\.( |$))")))
+                    {
+                        append = true;
+                    }
+                }
+            }
+            if (append)
+            {
+                if (ALTER_TO_DIV_EXCEPTIONS.find(GetTagName(sibling)) == ALTER_TO_DIV_EXCEPTIONS.end())
+                {
+                    SetNodeTag(sibling, "DIV");
+                }
+                AppendChild(articleContent, sibling);
+                // Fetch children again to make it compatible
+                // with DOM parsers without live collection support.
+                siblings = GetChildElements(parentOfTopCandidate);
+                // siblings is a reference to the children array, and
+                // sibling is removed from the array when we call appendChild().
+                // As a result, we must revisit this index since the nodes
+                // have been shifted.
+                s -= 1;
+                sl -= 1;
+            }
+        }
     }
 }
 
@@ -774,6 +957,9 @@ std::string ArticleScraper::GetNodeId(lxb_dom_node_t *node)
 
     size_t len = 0;
     const lxb_char_t *id = lxb_dom_element_id(lxb_dom_interface_element(node), &len);
+    if (id == nullptr)
+        return "";
+
     std::string result(reinterpret_cast<const char *>(id), len);
 
     return result;
