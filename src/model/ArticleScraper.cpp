@@ -629,6 +629,115 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page)
                 s -= 1;
                 sl -= 1;
             }
+            PrepArticle(articleContent);
+        }
+    }
+}
+
+void ArticleScraper::CleanStyles(lxb_dom_node_t *element)
+{
+
+    if (element == nullptr || !IsElementNode(element))
+        return;
+
+    for (size_t i = 0; i < PRESENTATIONAL_ATTRIBUTES.size(); i++)
+    {
+        RemoveAttribute(element, PRESENTATIONAL_ATTRIBUTES.at(i));
+    }
+
+    if (DEPRECATED_SIZE_ATTRIBUTE_ELEMS.find(GetTagName(element)) != DEPRECATED_SIZE_ATTRIBUTE_ELEMS.end())
+    {
+        RemoveAttribute(element, "width");
+        RemoveAttribute(element, "height");
+    }
+
+    auto cur = element;
+    while (cur != nullptr)
+    {
+        CleanStyles(cur);
+        cur = GetNextElementSibling(cur);
+    }
+}
+
+void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent)
+{
+    CleanStyles(articleContent);
+}
+
+void ArticleScraper::CleanConditionally(lxb_dom_node_t *element, std::string tag)
+{
+    auto nodesToRemove = GetElementsByTagName(element, tag);
+    for (auto &node : nodesToRemove)
+    {
+        auto isDataTable = [this](lxb_dom_node_t *node)
+        {
+            auto readabilityDataTable = GetAttribute(node, "readabilityDataTable");
+            bool isDataTable = readabilityDataTable == "0" ? false : true;
+            return isDataTable;
+        };
+
+        bool isList = tag == "ul" || tag == "ol";
+        if (!isList)
+        {
+            int listLength = 0;
+            auto listNodes = GetAllNodesWithTag(node, {"ul", "ol"});
+            for (auto &listNode : listNodes)
+            {
+                listLength += GetInnerText(listNode).size();
+            }
+            isList = (double)listLength / (double)GetInnerText(node).size() > 0.9;
+        }
+
+        if (tag == "table" && isDataTable(node))
+        {
+
+            continue;
+        }
+
+        if (HasAncestorTag(node, "table", -1, isDataTable))
+        {
+            continue;
+        }
+
+        if (HasAncestorTag(node, "code"))
+        {
+            continue;
+        }
+
+        if (SomeNode(GetElementsByTagName(node, "table"), [this](lxb_dom_node_t *node_)
+                     { return HasAttribute(node_, "readabilityDataTable"); }))
+        {
+            continue;
+        }
+
+        auto weight = GetClassWeight(node);
+        int contentScore = 0;
+        if (weight + contentScore < 0)
+        {
+            RemoveNode(node);
+            continue;
+        }
+
+        if (GetCharCount(node, ',') < 10)
+        {
+            // If there are not very many commas, and the number of
+            // non-paragraph elements is more than paragraphs or other
+            // ominous signs, remove the element.
+            auto p = GetElementsByTagName(node, "p").size();
+            auto img = GetElementsByTagName(node, "img").size();
+            auto li = GetElementsByTagName(node, "li").size(); - 100;
+            auto input = GetElementsByTagName(node, "input").size();
+            auto headingDensity = GetTextDensity(node, {
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+                "h5",
+                "h6",
+            });
+            int embedCount = 0;
+            auto embeds = GetAllNodesWithTag(node, {"object", "embed", "iframe"});
+            // CONTINUE
         }
     }
 }
@@ -855,6 +964,133 @@ void ArticleScraper::UnwrapNoScriptImages()
 ArticleScraper::~ArticleScraper()
 {
     FreeResources();
+}
+
+void ArticleScraper::MarkDataTables(lxb_dom_node_t *root)
+{
+    auto tables = GetElementsByTagName(root, "table");
+    for (size_t i = 0; i < tables.size(); i++)
+    {
+        auto table = tables[i];
+        auto role = GetAttribute(table, "role");
+        if (role == "presentation")
+        {
+            SetAttribute(table, "readabilityDataTable", "0");
+            continue;
+        }
+
+        auto datatable = GetAttribute(table, "datatable");
+        if (datatable == "0")
+        {
+            SetAttribute(table, "readabilityDataTable", "0");
+            continue;
+        }
+
+        auto summary = GetAttribute(table, "summary");
+        if (summary != "")
+        {
+
+            SetAttribute(table, "readabilityDataTable", "1");
+            continue;
+        }
+
+        auto captions = GetElementsByTagName(table, "caption");
+        if (captions.size() > 0 && GetChildElementCount(captions[0]))
+        {
+
+            SetAttribute(table, "readabilityDataTable", "1");
+            continue;
+        }
+
+        std::vector<std::string> dataTableDescendants = {"col",
+                                                         "colgroup",
+                                                         "tfoot",
+                                                         "thead",
+                                                         "th"};
+        auto descendantExists = [this, table](std::string tag)
+        {
+            auto elements = GetElementsByTagName(table, tag);
+            return elements.size() > 0;
+        };
+        bool some = false;
+        for (auto &tableDescendant : dataTableDescendants)
+        {
+            if (descendantExists(tableDescendant))
+            {
+
+                some = true;
+                break;
+            }
+        }
+        if (some)
+        {
+            SetAttribute(table, "readabilityDataTable", "1");
+            continue;
+        }
+
+        if (GetElementsByTagName(table, "table").size() > 0)
+        {
+
+            SetAttribute(table, "readabilityDataTable", "0");
+            continue;
+        }
+
+        int rows = 0;
+        int columns = 0;
+        auto trs = GetElementsByTagName(table, "tr");
+        for (size_t i = 0; i < trs.size(); i++)
+        {
+            std::string rs = GetAttribute(trs[i], "rowspan"); // "" if missing
+            int rowspan = 0;
+            if (!rs.empty())
+            {
+                try
+                {
+                    rowspan = std::stoi(rs);
+                } // like parseInt: "3abc"->3
+                catch (...)
+                {
+                    rowspan = 0;
+                } // like NaN -> falsy
+            }
+            rows += (rowspan != 0 ? rowspan : 1);
+        }
+        int columnsInTHisROw = 0;
+        auto cells = GetElementsByTagName(trs[i], "td");
+        for (size_t j = 0; j < cells.size(); j++)
+        {
+            std::string rs = GetAttribute(trs[i], "rowspan"); // "" if missing
+            int colspan = 0;
+            if (!rs.empty())
+            {
+                try
+                {
+                    colspan = std::stoi(rs);
+                } // like parseInt: "3abc"->3
+                catch (...)
+                {
+                    colspan = 0;
+                } // like NaN -> falsy
+            }
+            columnsInTHisROw += (colspan != 0 ? colspan : 1);
+        }
+        columns = std::max(columns, columnsInTHisROw);
+
+        if (columns == 1 || rows == 1)
+        {
+            SetAttribute(table, "readabilityDataTable", "0");
+            continue;
+        }
+
+        if (rows >= 10 || columns > 4)
+        {
+            SetAttribute(table, "readabilityDataTable", "1");
+            continue;
+        }
+
+        auto value = rows * columns > 10 ? "1" : "0";
+        SetAttribute(table, "readabilityDataTable", value);
+    }
 }
 
 std::vector<lxb_dom_node_t *> ArticleScraper::GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name)

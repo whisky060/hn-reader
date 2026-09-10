@@ -21,6 +21,11 @@ private:
     void FreeResources();
     std::string GetArticleTitle();
 
+    void PrepArticle(lxb_dom_node_t *articleContent);
+    void CleanStyles(lxb_dom_node_t *element);
+    void MarkDataTables(lxb_dom_node_t *root);
+    void CleanConditionally(lxb_dom_node_t* node, std::string tag);
+
     // helpers
     std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);
     std::vector<lxb_dom_node_t *> GetAllNodesWithTag(lxb_dom_node_t *root, std::unordered_set<std::string> tag_names);
@@ -29,11 +34,11 @@ private:
     std::string GetNodeTextContent(lxb_dom_node_t *node);
     bool IsElementNode(lxb_dom_node_t *node);
     bool IsTextNode(lxb_dom_node_t *node);
-    bool IsValidByLine(lxb_dom_node_t *node, std::string& matchString);
+    bool IsValidByLine(lxb_dom_node_t *node, std::string &matchString);
 
     // Get tag name (uppercase, e.g. "DIV")
     std::string GetTagName(lxb_dom_node_t *node);
-    
+
     std::string GetNodeId(lxb_dom_node_t *node);
     std::string GetNodeClass(lxb_dom_node_t *node);
     std::string GetAttribute(lxb_dom_node_t *node, const std::string &attr_name);
@@ -47,7 +52,7 @@ private:
 
     void ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes, const std::string &newTag);
 
-    bool HeaderDuplicateTitle(lxb_dom_node_t* element);
+    bool HeaderDuplicateTitle(lxb_dom_node_t *element);
     double TextSimilarity(std::string textA, std::string textB);
 
     // Get first ELEMENT child (skips text/comment nodes)
@@ -67,7 +72,7 @@ private:
 
     // Get ancestor chain (up to maxDepth, 0 = unlimited)
     std::vector<lxb_dom_node_t *> GetAncestors(lxb_dom_node_t *node, size_t maxDepth = 0);
-    
+
     // Remove node from tree
     void RemoveNode(lxb_dom_node_t *node);
 
@@ -129,7 +134,7 @@ private:
     bool HasSingleTagInsideElement(lxb_dom_node_t *element, const std::string &tag);
 
     // Does this node have an ancestor with the given tag name (up to maxDepth)?
-    bool HasAncestorTag(lxb_dom_node_t *node, const std::string &tagName, size_t maxDepth = 3, std::function<bool(lxb_dom_node_t*)> filter = nullptr);
+    bool HasAncestorTag(lxb_dom_node_t *node, const std::string &tagName, size_t maxDepth = 3, std::function<bool(lxb_dom_node_t *)> filter = nullptr);
 
     // Is this node probably visible? (not display:none, not hidden, etc.)
     bool IsProbablyVisible(lxb_dom_node_t *node);
@@ -142,8 +147,8 @@ private:
     // Get innerHTML of a node (serialize subtree to string)
     std::string GetInnerHtml(lxb_dom_node_t *node);
 
-    void Trim(std::string& s);
-    
+    void Trim(std::string &s);
+
     enum class RegexPattern
     {
         UNLIKELY_CANDIDATES,
@@ -168,7 +173,6 @@ private:
         JSON_LD_ARTICLE_TYPES,
         AD_WORDS,
         LOADING_WORDS
-
     };
 
     lxb_html_document_t *doc;
@@ -177,7 +181,6 @@ private:
     std::string articleByline;
     std::string articleTitle;
     int nbTopCandidates;
-
 
     // Max number of nodes supported by this parser. Default: 0 (no limit)
     const int DEFAULT_MAX_ELEMS_TO_PARSE = 0;
@@ -205,8 +208,7 @@ private:
         "navigation",
         "alert",
         "alertdialog",
-        "dialog"
-    };
+        "dialog"};
 
     const std::unordered_set<std::string> DIV_TO_P_ELEMS = {
         "BLOCKQUOTE",
@@ -217,8 +219,7 @@ private:
         "P",
         "PRE",
         "TABLE",
-        "UL"
-    };
+        "UL"};
 
     const std::unordered_set<std::string> ALTER_TO_DIV_EXCEPTIONS = {"DIV", "ARTICLE", "SECTION", "P", "OL", "UL"};
 
@@ -237,7 +238,7 @@ private:
         "vspace",
     };
 
-    const std::vector<std::string> DEPRECATED_SIZE_ATTRIBUTE_ELEMS = {"TABLE", "TH", "TD", "HR", "PRE"};
+    const std::unordered_set<std::string> DEPRECATED_SIZE_ATTRIBUTE_ELEMS = {"TABLE", "TH", "TD", "HR", "PRE"};
 
     // The commented out elements qualify as phrasing content but tend to be
     // removed by readability when put into paragraphs, so we ignore them here.
