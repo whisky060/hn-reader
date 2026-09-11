@@ -6,10 +6,11 @@
 std::string ArticleScraper::operator()(std::string html_page)
 {
 
+    ParseHTML(html_page);
+
     articleByline = "";
     articleTitle = GetArticleTitle();
     nbTopCandidates = DEFAULT_N_TOP_CANDIDATES;
-    ParseHTML(html_page);
 
     RemoveScripts();
     PrepDocument();
@@ -662,6 +663,103 @@ void ArticleScraper::CleanStyles(lxb_dom_node_t *element)
 void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent)
 {
     CleanStyles(articleContent);
+    MarkDataTables(articleContent);
+    CleanConditionally(articleContent, "form");
+    CleanConditionally(articleContent, "fieldset");
+    Clean(articleContent, "object");
+    Clean(articleContent, "embed");
+    Clean(articleContent, "footer");
+    Clean(articleContent, "link");
+    Clean(articleContent, "aside");
+
+    auto shareElementThreshold = DEFAULT_CHARDEFAULT_CHAR_THRESHOLD;
+
+    auto childrens = GetChildElements(articleContent);
+    for (auto &child : childrens)
+    {
+        CleanMatchedNode(child, [this, shareElementThreshold](lxb_dom_node_t *node, std::string matchString)
+                         { return (
+                               GetNodeTextContent(node).size() < shareElementThreshold &&
+                               std::regex_search(matchString, REGEXPS.at(RegexPattern::SHARE_ELEMENTS))); });
+    }
+
+    Clean(articleContent, "iframe");
+    Clean(articleContent, "input");
+    Clean(articleContent, "textarea");
+    Clean(articleContent, "select");
+    Clean(articleContent, "button");
+}
+
+void ArticleScraper::CleanHeaders(lxb_dom_node_t *element)
+{
+    if (!IsElementNode(element))
+        return;
+
+    auto headingNodes = GetAllNodesWithTag(element, {"h1", "h2"});
+}
+
+void ArticleScraper::RemoveNodes(std::vector<lxb_dom_node_t *> nodesToRemove, std::function<bool(lxb_dom_node_t *)> filter)
+{
+    for (size_t i = nodesToRemove.size() - 1; i >= 0; i--)
+    {
+        auto node = nodesToRemove[i];
+        auto parentNode = GetParent(node);
+        if (parentNode)
+        {
+            if (filter(node, i, nodesToRemove))
+            {
+            }
+        }
+    }
+}
+
+void ArticleScraper::RemoveChilde(lxb_dom_node_t *parent, lxb_dom_node_t *child)
+{
+    if (parent == nullptr || child == nullptr)
+        return;
+
+    auto err = lxb_dom_node_remove_child(parent, child);
+    return;
+}
+
+void ArticleScraper::CleanMatchedNode(lxb_dom_node_t *element, std::function<bool(lxb_dom_node_t *, std::string)> filter)
+{
+    if (!IsElementNode(element))
+        return;
+
+    auto endOfSearchMarkerNode = GetNextNode(element, true);
+    auto next = GetNextNode(element);
+    while (next && next != endOfSearchMarkerNode)
+    {
+        if (filter(next, GetNodeClass(next) + " " + GetNodeId(next)))
+        {
+            next = RemoveAndGetNext(next);
+        }
+        else
+        {
+            next = GetNextNode(next);
+        }
+    }
+}
+
+void ArticleScraper::Clean(lxb_dom_node_t *element, std::string tag)
+{
+    std::unordered_set<std::string> embeds = {
+        "object",
+        "embed",
+        "iframe"};
+    auto isEmbed = embeds.find(tag) != embeds.end();
+    auto nodesToRemove = GetElementsByTagName(element, tag);
+    for (auto &node : nodesToRemove)
+    {
+        if (isEmbed)
+        {
+            if (HasVideoAttribute(node))
+                continue;
+
+            RemoveNode(node);
+        }
+    }
 }
 
 void ArticleScraper::CleanConditionally(lxb_dom_node_t *element, std::string tag)
@@ -725,21 +823,150 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element, std::string tag
             // ominous signs, remove the element.
             auto p = GetElementsByTagName(node, "p").size();
             auto img = GetElementsByTagName(node, "img").size();
-            auto li = GetElementsByTagName(node, "li").size(); - 100;
+            auto li = GetElementsByTagName(node, "li").size();
+            -100;
             auto input = GetElementsByTagName(node, "input").size();
             auto headingDensity = GetTextDensity(node, {
-                "h1",
-                "h2",
-                "h3",
-                "h4",
-                "h5",
-                "h6",
-            });
+                                                           "h1",
+                                                           "h2",
+                                                           "h3",
+                                                           "h4",
+                                                           "h5",
+                                                           "h6",
+                                                       });
             int embedCount = 0;
             auto embeds = GetAllNodesWithTag(node, {"object", "embed", "iframe"});
-            // CONTINUE
+            bool hasVideoAttribute = false;
+            for (size_t i = 0; i < embeds.size(); i++)
+            {
+                if (HasVideoAttribute(node))
+                {
+                    hasVideoAttribute = true;
+                    break;
+                }
+                embedCount++;
+            }
+            if (hasVideoAttribute)
+            {
+                continue;
+            }
+            auto innerText = GetInnerText(node);
+            if (
+                std::regex_search(innerText, REGEXPS.at(RegexPattern::AD_WORDS)) ||
+                std::regex_search(innerText, REGEXPS.at(RegexPattern::LOADING_WORDS)))
+            {
+                RemoveNode(node);
+                continue;
+            }
+
+            auto contentLength = innerText.size();
+            auto linkDensity = GetLinkDensity(node);
+            std::vector<std::string> textishTags = {"SPAN", "LI", "TD"};
+            textishTags.emplace_back(DIV_TO_P_ELEMS.begin(), DIV_TO_P_ELEMS.end());
+            auto textDensity = GetTextDensity(node, textishTags);
+            auto isFIgureChild = HasAncestorTag(node, "figure");
+            auto shouldRemoveNode = [&]()
+            {
+                if (!isFIgureChild && img > 1 && (double)p / (double)img < 0.5)
+                {
+                    return true;
+                }
+
+                if (!isList && li > p)
+                {
+                    return true;
+                }
+
+                if (input > p / 3)
+                    return true;
+
+                if (
+                    !isList &&
+                    !isFIgureChild &&
+                    headingDensity < 0.9 &&
+                    contentLength < 25 &&
+                    (img == 0 || img > 2) &&
+                    linkDensity > 0)
+                {
+                    return true;
+                }
+
+                // TODO: consider adding link density modifier
+                if (!isList && weight < 25 && linkDensity > 0.2)
+                    return true;
+
+                // TODO: consider adding link density modifier
+                if (weight >= 25 && linkDensity > 0.5)
+                    return true;
+
+                if ((embedCount == 1 && contentLength < 75) || embedCount > 1)
+                    return true;
+
+                if (img == 0 && textDensity == 0)
+                    return true;
+
+                return false;
+            };
+
+            auto haveToRemove = shouldRemoveNode();
+            auto isNodeDone = false;
+            if (isList && haveToRemove)
+            {
+                auto childrens = GetChildElements(node);
+                for (size_t c = 0; c < childrens.size(); c++)
+                {
+                    auto child = childrens[c];
+                    if (GetChildElementCount(child) > 1)
+                    {
+                        isNodeDone = true;
+                        if (haveToRemove)
+                            RemoveNode(node);
+                        break;
+                    }
+                }
+                if (isNodeDone)
+                    continue;
+                auto li_count = GetElementsByTagName(node, "li").size();
+                if (img == li_count)
+                    continue;
+            }
+            if (haveToRemove)
+                RemoveNode(node);
+            continue;
         }
     }
+}
+
+bool ArticleScraper::HasVideoAttribute(lxb_dom_node_t *node)
+{
+    if (!IsElementNode(node))
+        return false;
+
+    auto *element = lxb_dom_interface_element(node);
+    for (auto *attr = lxb_dom_element_first_attribute(element);
+         attr != nullptr;
+         attr = lxb_dom_element_next_attribute(attr))
+    {
+        size_t len = 0;
+        const lxb_char_t *v = lxb_dom_attr_value(attr, &len);
+        if (v == nullptr || len == 0)
+            continue;
+
+        std::string value(reinterpret_cast<const char *>(v), len);
+        if (std::regex_search(value, REGEXPS.at(RegexPattern::VIDEOS)))
+        {
+            return true;
+        }
+    }
+
+    if (
+        GetTagName(node) == "OBJECT" &&
+        std::regex_search(GetInnerHtml(node), REGEXPS.at(RegexPattern::VIDEOS)))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 double ArticleScraper::TextSimilarity(std::string textA, std::string textB)

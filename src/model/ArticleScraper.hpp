@@ -25,6 +25,11 @@ private:
     void CleanStyles(lxb_dom_node_t *element);
     void MarkDataTables(lxb_dom_node_t *root);
     void CleanConditionally(lxb_dom_node_t* node, std::string tag);
+    bool HasVideoAttribute(lxb_dom_node_t* node);
+    void Clean(lxb_dom_node_t* node, std::string tag);
+    void CleanMatchedNode(lxb_dom_node_t* node, std::function<bool(lxb_dom_node_t*, std::string)> filter);
+    void CleanHeaders(lxb_dom_node_t* element);
+    void RemoveNodes(std::vector<lxb_dom_node_t*> nodesToRemove, std::function<bool(lxb_dom_node_t*)> filter);
 
     // helpers
     std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);
@@ -75,6 +80,7 @@ private:
 
     // Remove node from tree
     void RemoveNode(lxb_dom_node_t *node);
+    void RemoveChilde(lxb_dom_node_t* parent, lxb_dom_node_t* child);
 
     // Remove and return the next node (for safe iteration during removal)
     lxb_dom_node_t *RemoveAndGetNext(lxb_dom_node_t *node);
