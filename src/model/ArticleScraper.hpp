@@ -41,6 +41,8 @@ private:
     bool IsTextNode(lxb_dom_node_t *node);
     bool IsValidByLine(lxb_dom_node_t *node, std::string &matchString);
 
+
+
     // Get tag name (uppercase, e.g. "DIV")
     std::string GetTagName(lxb_dom_node_t *node);
 
@@ -152,6 +154,8 @@ private:
 
     // Get innerHTML of a node (serialize subtree to string)
     std::string GetInnerHtml(lxb_dom_node_t *node);
+    void SetInnerHtml(lxb_dom_node_t *node, const std::string &html);
+
 
     void Trim(std::string &s);
 
