@@ -69,7 +69,7 @@ struct CommentDataBlock
                         ID parent,
                         std::string text,
                         unsigned long time
-                        ): 
+                        ):
                         type_(type),
                         author_(author),
                         id_(id),

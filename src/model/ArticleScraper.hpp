@@ -8,7 +8,11 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <regex>
+#include <vector>
+#include <functional>
+#include <algorithm>
 #include "exeptions/html_parsing_error.hpp"
+#include "lexbor/dom/interface.h"
 
 class ArticleScraper
 {
@@ -30,6 +34,10 @@ private:
     void CleanMatchedNode(lxb_dom_node_t* node, std::function<bool(lxb_dom_node_t*, std::string)> filter);
     void CleanHeaders(lxb_dom_node_t* element);
     void RemoveNodes(std::vector<lxb_dom_node_t*> nodesToRemove, std::function<bool(lxb_dom_node_t*)> filter);
+    void FixRelativeUris(lxb_dom_node_t* articleContent);
+    void SimplifyNestedElements(lxb_dom_node_t* articleContent);
+    void PostProcessContent(lxb_dom_node_t* articleContent);
+    void CleanClasses(lxb_dom_node_t* node);
 
     // helpers
     std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);
@@ -158,6 +166,7 @@ private:
 
 
     void Trim(std::string &s);
+    static std::string ToUpper(const std::string &s);
 
     enum class RegexPattern
     {
@@ -190,7 +199,24 @@ private:
     std::string articleLang;
     std::string articleByline;
     std::string articleTitle;
+    std::string articleDir;
     int nbTopCandidates;
+
+    // Readability sieve flags (mirrors Readability.js FLAG_* 0x1|0x2|0x4)
+    static constexpr int FLAG_STRIP_UNLIKELYS = 0x1;
+    static constexpr int FLAG_WEIGHT_CLASSES = 0x2;
+    static constexpr int FLAG_CLEAN_CONDITIONALLY = 0x4;
+    int flags_ = FLAG_STRIP_UNLIKELYS | FLAG_WEIGHT_CLASSES |
+                 FLAG_CLEAN_CONDITIONALLY;
+
+    struct Attempt {
+      lxb_dom_node_t *articleContent = nullptr;
+      size_t textLength = 0;
+    };
+    std::vector<Attempt> attempts_;
+
+    bool IsFlagActive(int flag) const { return (flags_ & flag) > 0; }
+    void RemoveFlag(int flag) { flags_ &= ~flag; }
 
     // Max number of nodes supported by this parser. Default: 0 (no limit)
     const int DEFAULT_MAX_ELEMS_TO_PARSE = 0;
@@ -199,17 +225,9 @@ private:
     // tight the competition is among candidates.
     const int DEFAULT_N_TOP_CANDIDATES = 5;
 
-    // Element tags to score by default.
+    // Element tags to score by default (UPPER to match GetTagName()).
     const std::unordered_set<std::string> DEFAULT_TAGS_TO_SCORE = {
-        "section",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "p",
-        "td",
-        "pre"};
+        "SECTION", "H2", "H3", "H4", "H5", "H6", "P", "TD", "PRE"};
 
     const std::unordered_set<std::string> UNLIKELY_ROLES = {
         "menu",
@@ -295,7 +313,7 @@ private:
         "WBR",
     };
 
-    const std::vector<std::string> CLASSES_TO_PRESERVE = {"page"};
+    const std::unordered_set<std::string> CLASSES_TO_PRESERVE = {"page"};
 
     const std::unordered_map<std::string, char> HTML_ESCAPE_MAP = {
         {"lt", '<'},
@@ -305,7 +323,9 @@ private:
         {"apos", '\''},
     };
 
+    const unsigned int DEFAULT_CHAR_THRESHOLD = 500;
     const unsigned int DEFAULT_CHARDEFAULT_CHAR_THRESHOLD = 500;
+    unsigned int charThreshold_ = 500;
 
     const std::unordered_map<RegexPattern, std::regex> REGEXPS = {
         {RegexPattern::UNLIKELY_CANDIDATES, std::regex("-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|"
