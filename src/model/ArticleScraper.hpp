@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "exeptions/html_parsing_error.hpp"
 #include "lexbor/dom/interface.h"
+#include "model/Logger.hpp"
 
 class ArticleScraper
 {
@@ -20,6 +21,7 @@ private:
     void ParseHTML(std::string html_page);
     void RemoveScripts();
     void PrepDocument();
+
     lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
     void FreeResources();
@@ -44,6 +46,7 @@ private:
     std::vector<lxb_dom_node_t *> GetAllNodesWithTag(lxb_dom_node_t *root, std::unordered_set<std::string> tag_names);
     lxb_dom_node_t *GetParent(lxb_dom_node_t *node);
     std::vector<lxb_dom_node_t *> GetChildElements(lxb_dom_node_t *node);
+    std::vector<lxb_dom_node_t *> GetNodes(lxb_dom_node_t *root);
     std::string GetNodeTextContent(lxb_dom_node_t *node);
     bool IsElementNode(lxb_dom_node_t *node);
     bool IsTextNode(lxb_dom_node_t *node);
@@ -196,6 +199,8 @@ private:
 
     lxb_html_document_t *doc;
     lxb_dom_node_t *dom;
+    lxb_dom_node_t* root;
+    bool isDebugMode = true;
     std::string articleLang;
     std::string articleByline;
     std::string articleTitle;

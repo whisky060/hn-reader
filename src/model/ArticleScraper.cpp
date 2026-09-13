@@ -1,4 +1,5 @@
 #include "model/ArticleScraper.hpp"
+#include "curl/curl.h"
 #include "exeptions/scraping_exception.hpp"
 #include "lexbor/dom/interface.h"
 #include <cstdio>
@@ -27,8 +28,11 @@ std::string ArticleScraper::operator()(std::string html_page) {
   auto articleContent = GrabArticle(nullptr);
   if (articleContent == nullptr)
     throw ScrapingException("Failed to grab article");
+  auto articleNode = lxb_dom_interface_node(articleContent);
+  PostProcessContent(articleNode);
 
-  auto content = GetInnerText(lxb_dom_interface_node(articleContent));
+
+  auto content = GetInnerText(articleNode);
   FreeResources();
   return content;
 }
@@ -57,8 +61,8 @@ void ArticleScraper::CleanClasses(lxb_dom_node_t *node) {
     filteredClassName += t;
   }
 
-  if (className.empty()) {
-    SetAttribute(node, "calss", className);
+  if (!className.empty()) {
+    SetAttribute(node, "class", filteredClassName);
   } else {
     RemoveAttribute(node, "class");
   }
@@ -74,14 +78,14 @@ void ArticleScraper::SimplifyNestedElements(lxb_dom_node_t *articleContent) {
   while (node) {
     if (GetParent(node) &&
         tagsToSimplify.find(GetTagName(node)) != tagsToSimplify.end() &&
-        (!GetNodeId(node).empty() &&
-         GetNodeId(node).starts_with("readability"))) {
+        !(!GetNodeId(node).empty() && GetNodeId(node).starts_with("readability")))
+    {
       if (IsElementWithoutContent(node)) {
         node = RemoveAndGetNext(node);
         continue;
       } else if (HasSingleTagInsideElement(node, "DIV") ||
                  HasSingleTagInsideElement(node, "SECTION")) {
-        auto child = GetFirstChildElement(node);
+        auto child = GetChildElements(node)[0];
         auto *element = lxb_dom_interface_element(node);
         for (auto *a = lxb_dom_element_first_attribute(element); a;
              a = lxb_dom_element_next_attribute(a)) {
@@ -118,7 +122,7 @@ std::string ArticleScraper::GetArticleTitle() {
     Trim(titleStr);
     curTitle = origTitle = titleStr;
   } else {
-    auto titleNodes = GetElementsByTagName(dom, "title");
+    auto titleNodes = GetElementsByTagName(root, "TITLE");
     if (!titleNodes.empty()) {
       curTitle = origTitle = GetInnerText(titleNodes[0]);
     }
@@ -152,15 +156,13 @@ std::string ArticleScraper::GetArticleTitle() {
     curTitle = origTitle.substr(0, last_it->position());
 
     if (wordCount(curTitle) < 3) {
-      std::regex leading_re("^[^" + titleSeparators + "]*[" + titleSeparators +
-                            "]");
+      std::regex leading_re("^[^" + titleSeparators + "]*[" + titleSeparators + "]");
       curTitle = std::regex_replace(origTitle, leading_re, "");
     }
   } else if (curTitle.find(": ") != std::string::npos) {
     // Check if we have an heading containing this exact string, so we
     // could assume it's the full title.
-    auto headings =
-        GetAllNodesWithTag(lxb_dom_interface_node(doc), {"h1", "h2"});
+    auto headings = GetAllNodesWithTag(root, {"H1", "H2"});
     auto trimmedTitle = curTitle;
     Trim(trimmedTitle);
     match = SomeNode(headings, [this, trimmedTitle](lxb_dom_node_t *node) {
@@ -178,7 +180,7 @@ std::string ArticleScraper::GetArticleTitle() {
       }
     }
   } else if (curTitle.size() > 150 || curTitle.size() < 15) {
-    auto hOnes = GetElementsByTagName(lxb_dom_interface_node(doc), "h1");
+    auto hOnes = GetElementsByTagName(root, "H1");
     if (hOnes.size() == 1) {
       curTitle = GetInnerText(hOnes[0]);
     }
@@ -212,9 +214,11 @@ bool ArticleScraper::IsValidByLine(lxb_dom_node_t *node,
   auto text = GetNodeTextContent(node);
   Trim(text);
   auto bylineLength = text.size();
-  return rel == "author" || itemprop.find("author") != std::string::npos ||
-         std::regex_match(text, REGEXPS.at(RegexPattern::BYLINE)) &&
-             bylineLength > 0 && bylineLength < 100;
+  return (
+        (rel == "author" ||
+        itemprop.find("author") != std::string::npos ||
+        std::regex_search(matchString, REGEXPS.at(RegexPattern::BYLINE))) &&
+        bylineLength > 0 && bylineLength < 100);
 }
 
 lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
@@ -262,12 +266,12 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
 
       // If we don't have a byline yet check to see if this node is a byline; if
       // it is store the byline and remove the node.
-      if (!articleByline.empty() && IsValidByLine(node, matchString)) {
+      if (articleByline.empty() && IsValidByLine(node, matchString)) {
         auto endOfSearchMarkerNode = GetNextNode(node, true);
         auto next = GetNextNode(node);
         lxb_dom_node_t *itempropNameNode = nullptr;
         while (next && next != endOfSearchMarkerNode) {
-          auto itemprop = GetAttribute(node, "itemprop");
+          auto itemprop = GetAttribute(next, "itemprop");
           if (itemprop.find("name") != std::string::npos) {
             itempropNameNode = next;
             break;
@@ -296,7 +300,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
             !std::regex_search(
                 matchString,
                 REGEXPS.at(RegexPattern::OK_MAYBE_ITS_A_CANDIDATE)) &&
-            !HasAncestorTag(node, "table") && !HasAncestorTag(node, "code") &&
+            !HasAncestorTag(node, "TABLE") && !HasAncestorTag(node, "CODE") &&
             GetTagName(node) != "BODY" && GetTagName(node) != "A") {
           node = RemoveAndGetNext(node);
           continue;
@@ -355,7 +359,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
             // insert it before the next non-phrasing node.
 
             if (GetFirstChild(fragment)) {
-              auto p = CreateElement("p");
+              auto p = CreateElement("P");
               AppendChild(p, fragment);
               InsertBefore(node, p, nextSibling);
             }
@@ -367,7 +371,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
         // safely converted into plain P elements to avoid confusing the scoring
         // algorithm with DIVs with are, in practice, paragraphs.
 
-        if (HasSingleTagInsideElement(node, "p") &&
+        if (HasSingleTagInsideElement(node, "P") &&
             GetLinkDensity(node) < 0.25) {
           auto newNode = GetChildElements(node)[0];
           auto parentNode = GetParent(node);
@@ -375,7 +379,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
           node = newNode;
           elementsToScore.push_back(node);
         } else if (!HasChildBlockElement(node)) {
-          node = SetNodeTag(node, "p");
+          node = SetNodeTag(node, "P");
           elementsToScore.push_back(node);
         }
       }
@@ -416,12 +420,14 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
 
       contentScore += count == 0 ? 1 : count;
       contentScore += std::min((int)innerText.size() / 100, 3);
-      int level = 0;
+
       int scoreDivider;
-      for (auto &ancestor : ancestors) {
-        if (GetTagName(ancestor) == "" || !GetParent(ancestor) ||
-            GetTagName(GetParent(ancestor)) == "") {
-          break;
+      for (int level = 0; level < ancestors.size(); level++) {
+        auto ancestor = ancestors[level];
+        if (GetTagName(ancestor) == "" || !GetParent(ancestor) ||GetTagName(GetParent(ancestor)) == "")
+        {
+
+            continue;
         }
 
         if (!HasAttribute(ancestor, "readability")) {
@@ -441,10 +447,10 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
           scoreDivider = level * 3;
 
         auto readability = GetAttribute(ancestor, "readability");
-        auto readabilityValue = std::stoi(readability);
-        readabilityValue += contentScore / scoreDivider;
+        auto readabilityValue = std::stod(readability);
+        readabilityValue += static_cast<double>(contentScore) / scoreDivider;
         SetAttribute(ancestor, "readability", std::to_string(readabilityValue));
-        level++;
+
       }
     }
     // After we've calculated scores, loop through all of the possible
@@ -456,7 +462,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
       // should have a relatively small link density (5% or less) and be mostly
       // unaffected by this operation.
       auto readability = GetAttribute(candidate, "readability");
-      auto readabilityValue = std::stoi(readability);
+      auto readabilityValue = std::stod(readability);
       auto candidateScore = readabilityValue * (1 - GetLinkDensity(candidate));
       SetAttribute(candidate, "readability", std::to_string(candidateScore));
 
@@ -465,10 +471,9 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
         if (t < topCandidates.size())
           aTopCandidate = topCandidates[t];
 
-        int topCandidateScore = 0;
+        double topCandidateScore = 0;
         if (aTopCandidate)
-          topCandidateScore =
-              std::stoi(GetAttribute(aTopCandidate, "readability"));
+          topCandidateScore = std::stod(GetAttribute(aTopCandidate, "readability"));
 
         if (!aTopCandidate || candidateScore > topCandidateScore) {
           topCandidates.insert(topCandidates.begin() + t, candidate);
@@ -749,13 +754,13 @@ void ArticleScraper::CleanStyles(lxb_dom_node_t *element) {
 void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent) {
   CleanStyles(articleContent);
   MarkDataTables(articleContent);
-  CleanConditionally(articleContent, "form");
-  CleanConditionally(articleContent, "fieldset");
-  Clean(articleContent, "object");
-  Clean(articleContent, "embed");
-  Clean(articleContent, "footer");
-  Clean(articleContent, "link");
-  Clean(articleContent, "aside");
+  CleanConditionally(articleContent, "FORM");
+  CleanConditionally(articleContent, "FIELDSET");
+  Clean(articleContent, "OBJECT");
+  Clean(articleContent, "EMBED");
+  Clean(articleContent, "FOOTER");
+  Clean(articleContent, "LINK");
+  Clean(articleContent, "ASIDE");
 
   auto shareElementThreshold = charThreshold_;
 
@@ -769,36 +774,36 @@ void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent) {
     });
   }
 
-  Clean(articleContent, "iframe");
-  Clean(articleContent, "input");
-  Clean(articleContent, "textarea");
-  Clean(articleContent, "select");
-  Clean(articleContent, "button");
+  Clean(articleContent, "IFRAME");
+  Clean(articleContent, "INPUT");
+  Clean(articleContent, "TEXTAREA");
+  Clean(articleContent, "SELECT");
+  Clean(articleContent, "BUTTON");
   CleanHeaders(articleContent);
 
-  CleanConditionally(articleContent, "table");
-  CleanConditionally(articleContent, "ul");
-  CleanConditionally(articleContent, "div");
-  ReplaceNodeTags(GetAllNodesWithTag(articleContent, {"h1"}), "h2");
+  CleanConditionally(articleContent, "TABLE");
+  CleanConditionally(articleContent, "UL");
+  CleanConditionally(articleContent, "DIV");
+  ReplaceNodeTags(GetAllNodesWithTag(articleContent, {"H1"}), "H2");
 
   // remove extra paragraphs
   RemoveNodes(
-      GetAllNodesWithTag(articleContent, {"p"}), [this](lxb_dom_node_t *node) {
+      GetAllNodesWithTag(articleContent, {"P"}), [this](lxb_dom_node_t *node) {
         auto contentElementCount =
-            GetAllNodesWithTag(node, {"img", "embed", "object", "iframe"})
+            GetAllNodesWithTag(node, {"IMG", "EMBED", "OBJECT", "IFRAME"})
                 .size();
         return contentElementCount == 0 && GetInnerText(node, false).empty();
       });
 
-  auto brNodes = GetAllNodesWithTag(articleContent, {"br"});
+  auto brNodes = GetAllNodesWithTag(articleContent, {"BR"});
   for (auto &br : brNodes) {
     auto next = GetNextNode(GetNextSibling(br));
-    if (next && GetTagName(next) == "p") {
+    if (next && GetTagName(next) == "P") {
       RemoveNode(br);
     }
   }
 
-  auto tableNodes = GetAllNodesWithTag(articleContent, {"table"});
+  auto tableNodes = GetAllNodesWithTag(articleContent, {"TABLE"});
   for (auto &table : tableNodes) {
     auto tbody = HasSingleTagInsideElement(table, "TBODY")
                      ? GetFirstChildElement(table)
@@ -824,7 +829,7 @@ void ArticleScraper::CleanHeaders(lxb_dom_node_t *element) {
   if (!IsElementNode(element))
     return;
 
-  auto headingNodes = GetAllNodesWithTag(element, {"h1", "h2"});
+  auto headingNodes = GetAllNodesWithTag(element, {"H1", "H2"});
   RemoveNodes(headingNodes, [this](lxb_dom_node_t *node) {
     return GetClassWeight(node) < 0;
   });
@@ -832,7 +837,7 @@ void ArticleScraper::CleanHeaders(lxb_dom_node_t *element) {
 
 void ArticleScraper::RemoveNodes(std::vector<lxb_dom_node_t *> nodesToRemove, std::function<bool(lxb_dom_node_t *)> filter)
 {
-  for (size_t i = nodesToRemove.size() - 1; i >= 0; i--) {
+  for (int i = nodesToRemove.size() - 1; i >= 0; i--) {
     auto node = nodesToRemove[i];
     auto parentNode = GetParent(node);
     if (parentNode) {
@@ -870,7 +875,7 @@ void ArticleScraper::CleanMatchedNode(
 }
 
 void ArticleScraper::Clean(lxb_dom_node_t *element, std::string tag) {
-  std::unordered_set<std::string> embeds = {"object", "embed", "iframe"};
+  std::unordered_set<std::string> embeds = {"OBJECT", "EMBED", "IFRAME"};
   auto isEmbed = embeds.find(tag) != embeds.end();
   auto nodesToRemove = GetElementsByTagName(element, tag);
   RemoveNodes(nodesToRemove, [this, isEmbed](lxb_dom_node_t *node) {
@@ -881,6 +886,8 @@ void ArticleScraper::Clean(lxb_dom_node_t *element, std::string tag) {
     return true;
   });
 }
+
+
 
 void ArticleScraper::CleanConditionally(lxb_dom_node_t *element,
                                         std::string tag) {
@@ -895,32 +902,39 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element,
       return isDataTable;
     };
 
-    bool isList = tag == "ul" || tag == "ol";
+    bool isList = tag == "UL" || tag == "OL";
     if (!isList) {
       int listLength = 0;
-      auto listNodes = GetAllNodesWithTag(node, {"ul", "ol"});
+      auto listNodes = GetAllNodesWithTag(node, {"UL", "OL"});
       for (auto &listNode : listNodes) {
         listLength += GetInnerText(listNode).size();
       }
       isList = (double)listLength / (double)GetInnerText(node).size() > 0.9;
     }
 
-    if (tag == "table" && isDataTable(node)) {
+    if (tag == "TABLE" && isDataTable(node)) {
 
       return false;
     }
 
-    if (HasAncestorTag(node, "table", -1, isDataTable)) {
+    if (HasAncestorTag(node, "TABLE", -1, isDataTable)) {
       return false;
     }
 
-    if (HasAncestorTag(node, "code")) {
+    if (HasAncestorTag(node, "CODE")) {
       return false;
     }
 
-    if (SomeNode(GetElementsByTagName(node, "table"),
+    if (SomeNode(GetElementsByTagName(node, "TABLE"),
                  [this](lxb_dom_node_t *node_) {
-                   return HasAttribute(node_, "readabilityDataTable");
+                     if(!HasAttribute(node_, "readabilityDataTable"))
+                     {
+                         return false;
+                     }
+                     auto redabilityValue = GetAttribute(node_, "readabilityDataTable");
+
+
+                   return redabilityValue == "1";
                  })) {
       return false;
     }
@@ -935,23 +949,23 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element,
       // If there are not very many commas, and the number of
       // non-paragraph elements is more than paragraphs or other
       // ominous signs, remove the element.
-      auto p = GetElementsByTagName(node, "p").size();
-      auto img = GetElementsByTagName(node, "img").size();
-      auto li = GetElementsByTagName(node, "li").size() - 100;
-      auto input = GetElementsByTagName(node, "input").size();
+      auto p = GetElementsByTagName(node, "P").size();
+      auto img = GetElementsByTagName(node, "IMG").size();
+      auto li = (int)GetElementsByTagName(node, "LI").size() - 100;
+      auto input = GetElementsByTagName(node, "INPUT").size();
       auto headingDensity = GetTextDensity(node, {
-                                                     "h1",
-                                                     "h2",
-                                                     "h3",
-                                                     "h4",
-                                                     "h5",
-                                                     "h6",
+                                                     "H1",
+                                                     "H2",
+                                                     "H3",
+                                                     "H4",
+                                                     "H5",
+                                                     "H6",
                                                  });
       int embedCount = 0;
-      auto embeds = GetAllNodesWithTag(node, {"object", "embed", "iframe"});
+      auto embeds = GetAllNodesWithTag(node, {"OBJECT", "EMBED", "IFRAME"});
 
       for (size_t i = 0; i < embeds.size(); i++) {
-        if (HasVideoAttribute(node)) {
+        if (HasVideoAttribute(embeds[i])) {
           return false;
         }
         embedCount++;
@@ -970,7 +984,7 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element,
       textishTags.insert(textishTags.end(), DIV_TO_P_ELEMS.begin(),
                          DIV_TO_P_ELEMS.end());
       auto textDensity = GetTextDensity(node, textishTags);
-      auto isFIgureChild = HasAncestorTag(node, "figure");
+      auto isFIgureChild = HasAncestorTag(node, "FIGURE");
       auto shouldRemoveNode = [&]() {
         if (!isFIgureChild && img > 1 && (double)p / (double)img < 0.5) {
           return true;
@@ -1015,7 +1029,7 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element,
           }
         }
 
-        auto li_count = GetElementsByTagName(node, "li").size();
+        auto li_count = GetElementsByTagName(node, "LI").size();
         if (img == li_count)
           return false;
       }
@@ -1107,7 +1121,7 @@ bool ArticleScraper::HeaderDuplicateTitle(lxb_dom_node_t *element) {
 }
 
 void ArticleScraper::RemoveScripts() {
-  auto script_nodes = GetAllNodesWithTag(dom, {"script", "noscript"});
+  auto script_nodes = GetAllNodesWithTag(root, {"SCRIPT", "NOSCRIPT"});
   RemoveNodes(script_nodes, nullptr);
 }
 
@@ -1128,7 +1142,7 @@ void ArticleScraper::ReplaceBrs(lxb_dom_node_t *element) {
   if (element == nullptr)
     return;
 
-  auto br_nodes = GetAllNodesWithTag(element, {"br"});
+  auto br_nodes = GetAllNodesWithTag(element, {"BR"});
   for (auto br_node : br_nodes) {
     auto next = GetNextSibling(br_node);
 
@@ -1147,7 +1161,7 @@ void ArticleScraper::ReplaceBrs(lxb_dom_node_t *element) {
     }
 
     if (replaced) {
-      auto p = CreateElement("p");
+      auto p = CreateElement("P");
       if (p != nullptr) {
         auto parent = GetParent(br_node);
         ReplaceChild(parent, p, br_node);
@@ -1191,24 +1205,26 @@ void ArticleScraper::ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes,
 
 void ArticleScraper::PrepDocument() {
   auto doc = this->doc;
-  auto style_nodes = GetAllNodesWithTag(dom, {"style"});
+  auto style_nodes = GetAllNodesWithTag(root, {"STYLE"});
   RemoveNodes(style_nodes, nullptr);
   if (doc->body) {
     ReplaceBrs(dom);
   }
 
   // this._replaceNodeTags(this._getAllNodesWithTag(doc, ["font"]), "SPAN");
-  auto font_nodes = GetAllNodesWithTag(dom, {"font"});
+  auto font_nodes = GetAllNodesWithTag(root, {"FONT"});
   ReplaceNodeTags(font_nodes, "SPAN");
 }
 
 void ArticleScraper::ParseHTML(std::string html_page) {
-  doc = lxb_html_document_create();
-  if (doc == nullptr) {
-    FreeResources();
-    throw HTMLParsingException(
-        "couldn't allocate enough space during parsing creation");
-  }
+
+    LOG_INFO("html parsing started");
+    doc = lxb_html_document_create();
+    if (doc == nullptr) {
+        FreeResources();
+        throw HTMLParsingException(
+            "couldn't allocate enough space during parsing creation");
+    }
 
   auto code = lxb_html_document_parse(doc, (const lxb_char_t *)html_page.data(),
                                       html_page.size());
@@ -1218,6 +1234,7 @@ void ArticleScraper::ParseHTML(std::string html_page) {
   }
 
   dom = lxb_dom_interface_node(lxb_html_document_body_element(doc));
+  root = lxb_dom_interface_node(doc->dom_document.element);
 }
 
 void ArticleScraper::FreeResources() {
@@ -1225,6 +1242,7 @@ void ArticleScraper::FreeResources() {
     lxb_html_document_destroy(doc);
     doc = nullptr;
     dom = nullptr;
+    root = nullptr;
   }
 }
 
@@ -1241,7 +1259,7 @@ void ArticleScraper::UnwrapNoScriptImages() {}
 ArticleScraper::~ArticleScraper() { FreeResources(); }
 
 void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
-  auto tables = GetElementsByTagName(root, "table");
+  auto tables = GetElementsByTagName(root, "TABLE");
   for (size_t i = 0; i < tables.size(); i++) {
     auto table = tables[i];
     auto role = GetAttribute(table, "role");
@@ -1263,15 +1281,15 @@ void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
       continue;
     }
 
-    auto captions = GetElementsByTagName(table, "caption");
+    auto captions = GetElementsByTagName(table, "CAPTION");
     if (captions.size() > 0 && GetChildElementCount(captions[0])) {
 
       SetAttribute(table, "readabilityDataTable", "1");
       continue;
     }
 
-    std::vector<std::string> dataTableDescendants = {"col", "colgroup", "tfoot",
-                                                     "thead", "th"};
+    std::vector<std::string> dataTableDescendants = {"COL", "COLGROUP", "TFOOT",
+                                                     "THEAD", "TH"};
     auto descendantExists = [this, table](std::string tag) {
       auto elements = GetElementsByTagName(table, tag);
       return elements.size() > 0;
@@ -1289,7 +1307,7 @@ void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
       continue;
     }
 
-    if (GetElementsByTagName(table, "table").size() > 0) {
+    if (GetElementsByTagName(table, "TABLE").size() > 0) {
 
       SetAttribute(table, "readabilityDataTable", "0");
       continue;
@@ -1297,7 +1315,7 @@ void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
 
     int rows = 0;
     int columns = 0;
-    auto trs = GetElementsByTagName(table, "tr");
+    auto trs = GetElementsByTagName(table, "TR");
     if (trs.empty()) {
       SetAttribute(table, "readabilityDataTable", "0");
       continue;
@@ -1307,7 +1325,7 @@ void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
       int rowspan = 0;
       if (!rs.empty()) {
         try {
-          rowspan = std::stoi(rs);
+          rowspan = std::stod(rs);
         } // like parseInt: "3abc"->3
         catch (...) {
           rowspan = 0;
@@ -1316,12 +1334,12 @@ void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
       rows += (rowspan != 0 ? rowspan : 1);
 
       int columnsInThisRow = 0;
-      for (auto &cell : GetElementsByTagName(tr, "td")) {
+      for (auto &cell : GetElementsByTagName(tr, "TD")) {
         std::string cs = GetAttribute(cell, "colspan"); // "" if missing
         int colspan = 0;
         if (!cs.empty()) {
           try {
-            colspan = std::stoi(cs);
+            colspan = std::stod(cs);
           } // like parseInt: "3abc"->3
           catch (...) {
             colspan = 0;
@@ -1350,9 +1368,13 @@ void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
 std::vector<lxb_dom_node_t *> ArticleScraper::GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name)
 {
   std::vector<lxb_dom_node_t *> nodes;
+  if(root == nullptr)
+      return nodes;
+  auto upperTag = ToUpper(tag_name);
+  auto endMarker = GetNextNode(root, true);
   lxb_dom_node_t *current = GetFirstChildElement(root);
-  while (current != nullptr) {
-    if (GetTagName(current) == tag_name) {
+  while (current != nullptr && current != endMarker) {
+    if (GetTagName(current) == upperTag) {
       nodes.push_back(current);
     }
     current = GetNextNode(current);
@@ -1362,10 +1384,17 @@ std::vector<lxb_dom_node_t *> ArticleScraper::GetElementsByTagName(lxb_dom_node_
 
 std::vector<lxb_dom_node_t *> ArticleScraper::GetAllNodesWithTag(lxb_dom_node_t *root, std::unordered_set<std::string> tag_names)
 {
+  std::unordered_set<std::string> upperTags;
+  for (const auto &tag : tag_names) {
+    upperTags.insert(ToUpper(tag));
+  }
   std::vector<lxb_dom_node_t *> nodes;
+  if(root == nullptr)
+      return nodes;
+  auto endMarker = GetNextNode(root, true);
   lxb_dom_node_t *current = GetFirstChild(root);
-  while (current != nullptr) {
-    if (tag_names.find(GetTagName(current)) != tag_names.end()) {
+  while (current != nullptr && current != endMarker) {
+    if (upperTags.find(GetTagName(current)) != upperTags.end()) {
       nodes.push_back(current);
     }
     current = GetNextNode(current);
@@ -1396,6 +1425,8 @@ std::vector<lxb_dom_node_t *> ArticleScraper::GetChildElements(lxb_dom_node_t *n
 std::string ArticleScraper::GetNodeTextContent(lxb_dom_node_t *node) {
   size_t len = 0;
   lxb_char_t *text = lxb_dom_node_text_content(node, &len);
+  if(text == nullptr)
+      return "";
   std::string result(reinterpret_cast<const char *>(text), len);
 
   lxb_dom_document_destroy_text(node->owner_document, text);
@@ -1808,12 +1839,12 @@ float ArticleScraper::GetLinkDensity(lxb_dom_node_t *node) {
     return 0;
   float linkLength = 0;
 
-  auto elements = GetElementsByTagName(node, "a");
+  auto elements = GetElementsByTagName(node, "A");
   for (auto linknode : elements) {
     auto href = GetAttribute(linknode, "href");
     float coefficient =
         (href != "") &&
-                std::regex_match(href, REGEXPS.at(RegexPattern::HASH_URL))
+                std::regex_search(href, REGEXPS.at(RegexPattern::HASH_URL))
             ? 0.3f
             : 1.0f;
     linkLength += GetInnerText(linknode).size() * coefficient;
@@ -1850,8 +1881,8 @@ int ArticleScraper::GetClassWeight(lxb_dom_node_t *node) {
 // Count occurrences of a character in node's text
 int ArticleScraper::GetCharCount(lxb_dom_node_t *node, char delimiter)
 {
-    return std::count(GetInnerText(node).begin(), GetInnerText(node).end(),
-                    delimiter);
+    auto text = GetInnerText(node);
+    return std::count(text.begin(), text.end(), delimiter);
 }
 
 // Get text density: ratio of text in specified child tags vs total
@@ -1882,8 +1913,9 @@ bool ArticleScraper::EveryNode(std::vector<lxb_dom_node_t *> nodes, std::functio
 }
 
 // Is this node phrasing content? (inline elements, text nodes, etc.)
-bool ArticleScraper::IsPhrasingContent(lxb_dom_node_t *node) {
-  if (node == nullptr || !IsElementNode(node))
+bool ArticleScraper::IsPhrasingContent(lxb_dom_node_t *node)
+{
+  if (node == nullptr)
     return false;
 
   return IsTextNode(node) ||
@@ -1923,8 +1955,8 @@ bool ArticleScraper::IsElementWithoutContent(lxb_dom_node_t *node) {
 
     auto children = GetChildElements(node);
     return children.empty() ||
-           children.size() == GetElementsByTagName(node, "br").size() +
-                                  GetElementsByTagName(node, "hr").size();
+           children.size() == GetElementsByTagName(node, "BR").size() +
+                                  GetElementsByTagName(node, "HR").size();
   }
 
   return false;
@@ -1952,10 +1984,14 @@ bool ArticleScraper::HasChildBlockElement(lxb_dom_node_t *element) {
 }
 
 // Does this element have exactly one child of given tag, with no real text?
-bool ArticleScraper::HasSingleTagInsideElement(lxb_dom_node_t *element,
-                                               const std::string &tag) {
-  if (!IsElementNode(element))
+bool ArticleScraper::HasSingleTagInsideElement(lxb_dom_node_t *element, const std::string &tag)
+{
+
+  if (element == nullptr)
     return false;
+
+  if (!IsElementNode(element))
+      return false;
 
   auto children = GetChildElements(element);
   if (children.size() != 1)
@@ -1967,7 +2003,7 @@ bool ArticleScraper::HasSingleTagInsideElement(lxb_dom_node_t *element,
 
   return !SomeNode(GetChildElements(child), [this](lxb_dom_node_t *node) {
     return IsTextNode(node) &&
-           std::regex_match(GetNodeTextContent(node),
+           std::regex_search(GetNodeTextContent(node),
                             REGEXPS.at(RegexPattern::HAS_CONTENT));
   });
 }
@@ -2067,7 +2103,7 @@ std::string ArticleScraper::GetInnerHtml(lxb_dom_node_t *node) {
   lxb_status_t status;
 
   for (lxb_dom_node_t *child = GetFirstChild(node); child != nullptr;
-       child = GetNextNode(child)) {
+       child = GetNextSibling(child)) {
     status = lxb_html_serialize_tree_str(child, &str);
     if (status != LXB_STATUS_OK) {
       break;
