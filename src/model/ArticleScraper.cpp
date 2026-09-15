@@ -1,110 +1,138 @@
 #include "model/ArticleScraper.hpp"
-#include "curl/curl.h"
 #include "exeptions/scraping_exception.hpp"
 #include "lexbor/dom/interface.h"
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
+#include <format>
 #include <math.h>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 
-std::string ArticleScraper::operator()(std::string html_page) {
+lxb_dom_node_t* ArticleScraper::operator()(std::string html_page) {
 
-  ParseHTML(html_page);
+    ParseHTML(html_page);
 
-  articleByline = "";
-  articleDir = "";
-  articleTitle = GetArticleTitle();
-  nbTopCandidates = DEFAULT_N_TOP_CANDIDATES;
-  flags_ =
-      FLAG_STRIP_UNLIKELYS | FLAG_WEIGHT_CLASSES | FLAG_CLEAN_CONDITIONALLY;
-  charThreshold_ = DEFAULT_CHAR_THRESHOLD;
-  attempts_.clear();
+    articleByline = "";
+    articleDir = "";
+    articleTitle = GetArticleTitle();
+    nbTopCandidates = DEFAULT_N_TOP_CANDIDATES;
+    flags_ = FLAG_STRIP_UNLIKELYS | FLAG_WEIGHT_CLASSES | FLAG_CLEAN_CONDITIONALLY;
+    charThreshold_ = DEFAULT_CHAR_THRESHOLD;
+    attempts_.clear();
 
-  RemoveScripts();
-  PrepDocument();
-  auto articleContent = GrabArticle(nullptr);
-  if (articleContent == nullptr)
-    throw ScrapingException("Failed to grab article");
-  auto articleNode = lxb_dom_interface_node(articleContent);
-  PostProcessContent(articleNode);
+    RemoveScripts();
+    PrepDocument();
+    auto articleContent = GrabArticle(nullptr);
+    if (articleContent == nullptr)
+        throw ScrapingException("Failed to grab article");
+    auto articleNode = lxb_dom_interface_node(articleContent);
+    PostProcessContent(articleNode);
 
 
-  auto content = GetInnerText(articleNode);
-  FreeResources();
-  return content;
+    auto content = GetInnerHtml(articleNode);
+    FreeResources();
+    return articleNode;
+}
+
+std::string ArticleScraper::GetNodeInfo(lxb_dom_node_t *node)
+{
+    auto tag = GetTagName(node);
+    auto id = GetNodeId(node);
+    auto classes = GetNodeClass(node);
+    return std::format("Node id: {}, tag: {}, classes: {}", id, tag, classes);
 }
 
 void ArticleScraper::PostProcessContent(lxb_dom_node_t *articleContent) {
-  FixRelativeUris(articleContent);
-  SimplifyNestedElements(articleContent);
-  CleanClasses(articleContent);
+
+
+    if(isDebugMode)
+        LOG_INFO("PostProcessContent on node: {}", GetNodeInfo(articleContent));
+
+    FixRelativeUris(articleContent);
+    SimplifyNestedElements(articleContent);
+    CleanClasses(articleContent);
+
+    if(isDebugMode)
+        LOG_INFO("PostProcessContet finished");
 }
 
 void ArticleScraper::CleanClasses(lxb_dom_node_t *node) {
-  auto classesToPreserve = CLASSES_TO_PRESERVE;
-  auto className = GetNodeClass(node);
-  std::stringstream ss(className);
-  std::string token;
-  std::vector<std::string> filtered;
-  while (ss >> token) {
-    if (classesToPreserve.find(token) != classesToPreserve.end()) {
-      filtered.push_back(token);
-    }
-  }
-  // than join back
-  std::string filteredClassName = "";
-  for (const auto &t : filtered) {
-    filteredClassName += " ";
-    filteredClassName += t;
-  }
+    if(isDebugMode)
+        LOG_INFO("CleanClasses on node: {}", GetNodeInfo(node));
 
-  if (!className.empty()) {
-    SetAttribute(node, "class", filteredClassName);
-  } else {
-    RemoveAttribute(node, "class");
-  }
-  for (auto node_ = GetFirstChildElement(node); node_;
-       node_ = GetNextElementSibling(node_)) {
-    CleanClasses(node_);
-  }
+    auto classesToPreserve = CLASSES_TO_PRESERVE;
+    auto className = GetNodeClass(node);
+    std::stringstream ss(className);
+    std::string token;
+    std::vector<std::string> filtered;
+    while (ss >> token) {
+        if (classesToPreserve.find(token) != classesToPreserve.end()) {
+            filtered.push_back(token);
+        }
+    }
+
+    // than join back
+    std::string filteredClassName = "";
+    for (const auto &t : filtered) {
+        filteredClassName += " ";
+        filteredClassName += t;
+    }
+
+    if (!className.empty()) {
+        SetAttribute(node, "class", filteredClassName);
+    } else {
+        RemoveAttribute(node, "class");
+    }
+    for (auto node_ = GetFirstChildElement(node); node_;
+         node_ = GetNextElementSibling(node_)) {
+        CleanClasses(node_);
+    }
 }
 
 void ArticleScraper::SimplifyNestedElements(lxb_dom_node_t *articleContent) {
-  auto node = articleContent;
-  std::unordered_set<std::string> tagsToSimplify = {"DIV", "SECTION"};
-  while (node) {
-    if (GetParent(node) &&
-        tagsToSimplify.find(GetTagName(node)) != tagsToSimplify.end() &&
-        !(!GetNodeId(node).empty() && GetNodeId(node).starts_with("readability")))
-    {
-      if (IsElementWithoutContent(node)) {
-        node = RemoveAndGetNext(node);
-        continue;
-      } else if (HasSingleTagInsideElement(node, "DIV") ||
-                 HasSingleTagInsideElement(node, "SECTION")) {
-        auto child = GetChildElements(node)[0];
-        auto *element = lxb_dom_interface_element(node);
-        for (auto *a = lxb_dom_element_first_attribute(element); a;
-             a = lxb_dom_element_next_attribute(a)) {
-          size_t nlen = 0, vlen = 0;
-          auto *n = lxb_dom_attr_qualified_name(a, &nlen);
-          auto *v = lxb_dom_attr_value(a, &vlen);
-          std::string name_str(reinterpret_cast<const char *>(n), nlen);
-          std::string value_str(reinterpret_cast<const char *>(v), vlen);
-          SetAttribute(child, name_str,
-                       value_str); // == child.setAttributeNode(clone)
+
+
+    if(isDebugMode)
+        LOG_INFO("SimplifyNestedElements on node: {}", GetNodeInfo(articleContent));
+
+    auto node = articleContent;
+    std::unordered_set<std::string> tagsToSimplify = {"DIV", "SECTION"};
+    while (node) {
+        if (GetParent(node) &&
+            tagsToSimplify.find(GetTagName(node)) != tagsToSimplify.end() &&
+            !(!GetNodeId(node).empty() && GetNodeId(node).starts_with("readability")))
+        {
+            if (IsElementWithoutContent(node))
+            {
+                node = RemoveAndGetNext(node);
+                continue;
+            }
+            else if (HasSingleTagInsideElement(node, "DIV") ||
+                    HasSingleTagInsideElement(node, "SECTION"))
+            {
+                auto child = GetChildElements(node)[0];
+                auto *element = lxb_dom_interface_element(node);
+                for (auto *a = lxb_dom_element_first_attribute(element); a;
+                    a = lxb_dom_element_next_attribute(a))
+                {
+                    size_t nlen = 0, vlen = 0;
+                    auto *n = lxb_dom_attr_qualified_name(a, &nlen);
+                    auto *v = lxb_dom_attr_value(a, &vlen);
+                    std::string name_str(reinterpret_cast<const char *>(n), nlen);
+                    std::string value_str(reinterpret_cast<const char *>(v), vlen);
+                    SetAttribute(child, name_str, value_str); // == child.setAttributeNode(clone)
+                }
+                auto parent = GetParent(node);
+                ReplaceChild(parent, child, node);
+                node = child;
+                continue;
+            }
         }
-        auto parent = GetParent(node);
-        ReplaceChild(parent, child, node);
-        node = child;
-        continue;
-      }
+        node = GetNextNode(node);
     }
-    node = GetNextNode(node);
-  }
+    if(isDebugMode)
+        LOG_INFO("SimplifyNestedElemets finished on node : {}", GetNodeInfo(articleContent));
 }
 
 void ArticleScraper::FixRelativeUris(lxb_dom_node_t *articleContent) {
@@ -203,6 +231,9 @@ std::string ArticleScraper::GetArticleTitle() {
                1)) {
     curTitle = origTitle;
   }
+
+  if(isDebugMode)
+      LOG_INFO("Grabbed article title: {}", curTitle);
 
   return curTitle;
 }
@@ -393,18 +424,33 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
      * Maybe eventually link density.
      **/
     std::vector<lxb_dom_node_t *> candidates;
+    if(isDebugMode)
+    {
+        if (isDebugMode)
+            LOG_DEBUG("scoring pass: elementsToScore.size()={} stripUnlikely={} weightClasses={} cleanConditionally={}",
+                      elementsToScore.size(), stripUnlikelyCandidates,
+                      IsFlagActive(FLAG_WEIGHT_CLASSES), IsFlagActive(FLAG_CLEAN_CONDITIONALLY));
+    }
     for (auto elementToScore : elementsToScore) {
       if (!GetParent(elementToScore) ||
           GetTagName(GetParent(elementToScore)) == "") {
-        continue;
+              if(isDebugMode)
+                  LOG_DEBUG("skip (no parent) : {}", GetNodeInfo(elementToScore));
+              continue;
       }
       auto innerText = GetInnerText(elementToScore);
       if (innerText.size() < 25) {
+        if(isDebugMode)
+            LOG_DEBUG("skip (short thext lenght) : {}", GetNodeInfo(elementToScore));
         continue;
       }
       auto ancestors = GetAncestors(elementToScore, 5);
       if (ancestors.size() == 0)
-        continue;
+      {
+          if(isDebugMode)
+              LOG_DEBUG("skip (no ancestors): {}", GetNodeInfo(elementToScore));
+          continue;
+      }
       int contentScore = 0;
 
       // Add a point for the paragraph itself as a base.
@@ -484,8 +530,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
         }
       }
     }
-    lxb_dom_node_t *topCandidate =
-        topCandidates.size() != 0 ? topCandidates[0] : nullptr;
+    lxb_dom_node_t *topCandidate = topCandidates.size() != 0 ? topCandidates[0] : nullptr;
     bool neededToCreateCandidate = false;
     lxb_dom_node_t *parentOfTopCandidate = nullptr;
     // If we still have no top candidate, just use the body as a last resort.
@@ -505,13 +550,11 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
       std::vector<std::vector<lxb_dom_node_t *>> alternativeCandidateAncestors;
       for (size_t i = 1; i < topCandidates.size(); i++) {
         auto altTopCandidate = topCandidates[i];
-        double altTopCandidateValue =
-            std::stod(GetAttribute(altTopCandidate, "readability"));
-        double topCandidateValue =
-            std::stod(GetAttribute(topCandidate, "readability"));
-        if (altTopCandidateValue / topCandidateValue >= 0.75) {
-          alternativeCandidateAncestors.push_back(
-              GetAncestors(altTopCandidate));
+        double altTopCandidateValue = std::stod(GetAttribute(altTopCandidate, "readability"));
+        double topCandidateValue = std::stod(GetAttribute(topCandidate, "readability"));
+        if (altTopCandidateValue / topCandidateValue >= 0.75)
+        {
+            alternativeCandidateAncestors.push_back(GetAncestors(altTopCandidate));
         }
       }
       size_t MINIMUM_TOPCANDIDATES = 3;
@@ -548,6 +591,13 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
       parentOfTopCandidate = GetParent(topCandidate);
       double latsScore = std::stod(GetAttribute(topCandidate, "readability"));
       double scoreThreshold = latsScore / 3;
+
+      if(isDebugMode)
+      {
+          LOG_DEBUG("walk-up start: topCandidate = {} score = {} scoreThreshold = {}",
+              GetNodeInfo(parentOfTopCandidate), latsScore, scoreThreshold);
+      }
+
       while (parentOfTopCandidate &&
              GetTagName(parentOfTopCandidate) != "BODY") {
         if (!HasAttribute(parentOfTopCandidate, "readability")) {
@@ -561,6 +611,11 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
         }
 
         if (parentScore > latsScore) {
+            if(isDebugMode)
+            {
+                LOG_DEBUG("walk-up: climbing to {} (parentScore={} > lastScore={})",
+                            GetNodeInfo(parentOfTopCandidate), parentScore, latsScore);
+            }
           topCandidate = parentOfTopCandidate;
           break;
         }
@@ -574,6 +629,7 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
       while (parentOfTopCandidate &&
              GetTagName(parentOfTopCandidate) != "BODY" &&
              GetChildElements(parentOfTopCandidate).size() == 1) {
+
         topCandidate = parentOfTopCandidate;
         parentOfTopCandidate = GetParent(topCandidate);
       }
@@ -687,7 +743,9 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
                     return b.textLength < a.textLength;
                   });
         if (attempts_.empty() || attempts_[0].textLength == 0) {
-          return nullptr;
+            if(isDebugMode)
+                LOG_INFO("GrabArticle  returnd node: nullptr");
+            return nullptr;
         }
         articleContent = attempts_[0].articleContent;
         parseSuccessful = true;
@@ -713,216 +771,258 @@ lxb_dom_element_t *ArticleScraper::GrabArticle(lxb_dom_node_t *page) {
         }
         return false;
       });
+      if(isDebugMode)
+          LOG_INFO("GrabArticle returned node: {}", GetNodeInfo(articleContent));
+
       return lxb_dom_interface_element(articleContent);
     }
   }
 }
 
-void ArticleScraper::SetInnerHtml(lxb_dom_node_t *node,
-                                  const std::string &html) {
-  if (!node || !IsElementNode(node))
-    return;
+void ArticleScraper::SetInnerHtml(lxb_dom_node_t *node, const std::string &html)
+{
+    if (!node || !IsElementNode(node))
+        return;
 
-  auto *html_elem = lxb_html_interface_element(lxb_dom_interface_element(node));
-  lxb_html_element_inner_html_set(
-      html_elem, reinterpret_cast<const lxb_char_t *>(html.data()),
-      html.size());
+    auto *html_elem = lxb_html_interface_element(lxb_dom_interface_element(node));
+    lxb_html_element_inner_html_set(
+        html_elem, reinterpret_cast<const lxb_char_t *>(html.data()),
+        html.size());
 }
 
-void ArticleScraper::CleanStyles(lxb_dom_node_t *element) {
+void ArticleScraper::CleanStyles(lxb_dom_node_t *element)
+{
 
-  if (element == nullptr || !IsElementNode(element))
-    return;
+    if(isDebugMode)
+        LOG_INFO("CleanStyeles on node: {}", GetNodeInfo(element));
 
-  for (size_t i = 0; i < PRESENTATIONAL_ATTRIBUTES.size(); i++) {
-    RemoveAttribute(element, PRESENTATIONAL_ATTRIBUTES.at(i));
-  }
+    if (element == nullptr || !IsElementNode(element))
+        return;
 
-  if (DEPRECATED_SIZE_ATTRIBUTE_ELEMS.find(GetTagName(element)) !=
-      DEPRECATED_SIZE_ATTRIBUTE_ELEMS.end()) {
-    RemoveAttribute(element, "width");
-    RemoveAttribute(element, "height");
-  }
-
-  auto cur = GetFirstChildElement(element);
-  while (cur != nullptr) {
-    CleanStyles(cur);
-    cur = GetNextElementSibling(cur);
-  }
-}
-
-void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent) {
-  CleanStyles(articleContent);
-  MarkDataTables(articleContent);
-  CleanConditionally(articleContent, "FORM");
-  CleanConditionally(articleContent, "FIELDSET");
-  Clean(articleContent, "OBJECT");
-  Clean(articleContent, "EMBED");
-  Clean(articleContent, "FOOTER");
-  Clean(articleContent, "LINK");
-  Clean(articleContent, "ASIDE");
-
-  auto shareElementThreshold = charThreshold_;
-
-  auto childrens = GetChildElements(articleContent);
-  for (auto &child : childrens) {
-    CleanMatchedNode(child, [this, shareElementThreshold](
-                                lxb_dom_node_t *node, std::string matchString) {
-      return (GetNodeTextContent(node).size() < shareElementThreshold &&
-              std::regex_search(matchString,
-                                REGEXPS.at(RegexPattern::SHARE_ELEMENTS)));
-    });
-  }
-
-  Clean(articleContent, "IFRAME");
-  Clean(articleContent, "INPUT");
-  Clean(articleContent, "TEXTAREA");
-  Clean(articleContent, "SELECT");
-  Clean(articleContent, "BUTTON");
-  CleanHeaders(articleContent);
-
-  CleanConditionally(articleContent, "TABLE");
-  CleanConditionally(articleContent, "UL");
-  CleanConditionally(articleContent, "DIV");
-  ReplaceNodeTags(GetAllNodesWithTag(articleContent, {"H1"}), "H2");
-
-  // remove extra paragraphs
-  RemoveNodes(
-      GetAllNodesWithTag(articleContent, {"P"}), [this](lxb_dom_node_t *node) {
-        auto contentElementCount =
-            GetAllNodesWithTag(node, {"IMG", "EMBED", "OBJECT", "IFRAME"})
-                .size();
-        return contentElementCount == 0 && GetInnerText(node, false).empty();
-      });
-
-  auto brNodes = GetAllNodesWithTag(articleContent, {"BR"});
-  for (auto &br : brNodes) {
-    auto next = GetNextNode(GetNextSibling(br));
-    if (next && GetTagName(next) == "P") {
-      RemoveNode(br);
+    for (size_t i = 0; i < PRESENTATIONAL_ATTRIBUTES.size(); i++)
+    {
+        RemoveAttribute(element, PRESENTATIONAL_ATTRIBUTES.at(i));
     }
-  }
 
-  auto tableNodes = GetAllNodesWithTag(articleContent, {"TABLE"});
-  for (auto &table : tableNodes) {
-    auto tbody = HasSingleTagInsideElement(table, "TBODY")
+    if (DEPRECATED_SIZE_ATTRIBUTE_ELEMS.find(GetTagName(element)) !=
+        DEPRECATED_SIZE_ATTRIBUTE_ELEMS.end())
+    {
+        RemoveAttribute(element, "width");
+        RemoveAttribute(element, "height");
+    }
+
+    auto cur = GetFirstChildElement(element);
+    while (cur != nullptr)
+    {
+        CleanStyles(cur);
+        cur = GetNextElementSibling(cur);
+    }
+}
+
+void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent)
+{
+    if(isDebugMode)
+        LOG_INFO("preparing article : {}", GetNodeInfo(articleContent));
+
+    CleanStyles(articleContent);
+    MarkDataTables(articleContent);
+    CleanConditionally(articleContent, "FORM");
+    CleanConditionally(articleContent, "FIELDSET");
+    Clean(articleContent, "OBJECT");
+    Clean(articleContent, "EMBED");
+    Clean(articleContent, "FOOTER");
+    Clean(articleContent, "LINK");
+    Clean(articleContent, "ASIDE");
+
+    auto shareElementThreshold = charThreshold_;
+
+    auto childrens = GetChildElements(articleContent);
+    for (auto &child : childrens)
+    {
+        CleanMatchedNode(child, [this, shareElementThreshold](
+                                    lxb_dom_node_t *node, std::string matchString) {
+                                        return (GetNodeTextContent(node).size() < shareElementThreshold &&
+                                            std::regex_search(matchString,
+                                                REGEXPS.at(RegexPattern::SHARE_ELEMENTS)));
+                                    });
+    }
+
+    Clean(articleContent, "IFRAME");
+    Clean(articleContent, "INPUT");
+    Clean(articleContent, "TEXTAREA");
+    Clean(articleContent, "SELECT");
+    Clean(articleContent, "BUTTON");
+    CleanHeaders(articleContent);
+
+    CleanConditionally(articleContent, "TABLE");
+    CleanConditionally(articleContent, "UL");
+    CleanConditionally(articleContent, "DIV");
+    ReplaceNodeTags(GetAllNodesWithTag(articleContent, {"H1"}), "H2");
+
+    // remove extra paragraphs
+    RemoveNodes(
+        GetAllNodesWithTag(articleContent, {"P"}), [this](lxb_dom_node_t *node) {
+            auto contentElementCount =
+                GetAllNodesWithTag(node, {"IMG", "EMBED", "OBJECT", "IFRAME"})
+                    .size();
+            return contentElementCount == 0 && GetInnerText(node, false).empty();
+        });
+
+    auto brNodes = GetAllNodesWithTag(articleContent, {"BR"});
+    for (auto &br : brNodes)
+    {
+        auto next = GetNextNode(GetNextSibling(br));
+        if (next && GetTagName(next) == "P")
+        {
+            RemoveNode(br);
+        }
+    }
+
+    auto tableNodes = GetAllNodesWithTag(articleContent, {"TABLE"});
+    for (auto &table : tableNodes)
+    {
+        auto tbody = HasSingleTagInsideElement(table, "TBODY")
                      ? GetFirstChildElement(table)
                      : table;
-    if (HasSingleTagInsideElement(tbody, "TR")) {
-      auto row = GetFirstChildElement(tbody);
-      if (HasSingleTagInsideElement(row, "TD")) {
-        auto cell = GetFirstChildElement(row);
-        bool isAllPhrasingContent =
-            EveryNode(GetChildElements(cell), [this](lxb_dom_node_t *n) {
-              return IsPhrasingContent(n);
-            });
-        auto newTag = isAllPhrasingContent ? "P" : "DIV";
-        cell = SetNodeTag(cell, newTag);
-        auto parent = GetParent(table);
-        ReplaceChild(parent, cell, table);
-      }
+        if (HasSingleTagInsideElement(tbody, "TR"))
+        {
+            auto row = GetFirstChildElement(tbody);
+            if (HasSingleTagInsideElement(row, "TD"))
+            {
+                auto cell = GetFirstChildElement(row);
+                bool isAllPhrasingContent =
+                    EveryNode(GetChildElements(cell), [this](lxb_dom_node_t *n) {
+                        return IsPhrasingContent(n);
+                    });
+                auto newTag = isAllPhrasingContent ? "P" : "DIV";
+                cell = SetNodeTag(cell, newTag);
+                auto parent = GetParent(table);
+                ReplaceChild(parent, cell, table);
+            }
+        }
     }
-  }
 }
 
-void ArticleScraper::CleanHeaders(lxb_dom_node_t *element) {
-  if (!IsElementNode(element))
-    return;
+void ArticleScraper::CleanHeaders(lxb_dom_node_t *element)
+{
+    if(isDebugMode)
+        LOG_INFO("cleaning header of: {}", GetNodeInfo(element));
 
-  auto headingNodes = GetAllNodesWithTag(element, {"H1", "H2"});
-  RemoveNodes(headingNodes, [this](lxb_dom_node_t *node) {
-    return GetClassWeight(node) < 0;
-  });
+    if (!IsElementNode(element))
+        return;
+
+    auto headingNodes = GetAllNodesWithTag(element, {"H1", "H2"});
+    RemoveNodes(headingNodes, [this](lxb_dom_node_t *node) {
+        return GetClassWeight(node) < 0;
+    });
 }
 
 void ArticleScraper::RemoveNodes(std::vector<lxb_dom_node_t *> nodesToRemove, std::function<bool(lxb_dom_node_t *)> filter)
 {
-  for (int i = nodesToRemove.size() - 1; i >= 0; i--) {
-    auto node = nodesToRemove[i];
-    auto parentNode = GetParent(node);
-    if (parentNode) {
-      if (filter == nullptr || filter(node)) {
-        RemoveChilde(parentNode, node);
-      }
+    for (int i = nodesToRemove.size() - 1; i >= 0; i--)
+    {
+        auto node = nodesToRemove[i];
+        auto parentNode = GetParent(node);
+        if (parentNode)
+        {
+            if (filter == nullptr || filter(node))
+            {
+                RemoveChilde(parentNode, node);
+            }
+        }
     }
-  }
 }
 
-void ArticleScraper::RemoveChilde(lxb_dom_node_t *parent,
-                                  lxb_dom_node_t *child) {
-  if (parent == nullptr || child == nullptr)
-    return;
+void ArticleScraper::RemoveChilde(lxb_dom_node_t *parent, lxb_dom_node_t *child)
+{
 
-  auto err = lxb_dom_node_remove_child(parent, child);
-  return;
+    if (parent == nullptr || child == nullptr)
+        return;
+
+    if(isDebugMode)
+        LOG_INFO("removed child {} form parent", GetNodeInfo(child));
+
+    auto err = lxb_dom_node_remove_child(parent, child);
+    return;
 }
 
-void ArticleScraper::CleanMatchedNode(
-    lxb_dom_node_t *element,
-    std::function<bool(lxb_dom_node_t *, std::string)> filter) {
-  if (!IsElementNode(element))
-    return;
+void ArticleScraper::CleanMatchedNode(lxb_dom_node_t *element, std::function<bool(lxb_dom_node_t *, std::string)> filter)
+{
+    if (!IsElementNode(element))
+        return;
 
-  auto endOfSearchMarkerNode = GetNextNode(element, true);
-  auto next = GetNextNode(element);
-  while (next && next != endOfSearchMarkerNode) {
-    if (filter(next, GetNodeClass(next) + " " + GetNodeId(next))) {
-      next = RemoveAndGetNext(next);
-    } else {
-      next = GetNextNode(next);
+    auto endOfSearchMarkerNode = GetNextNode(element, true);
+    auto next = GetNextNode(element);
+    while (next && next != endOfSearchMarkerNode)
+    {
+        if (filter(next, GetNodeClass(next) + " " + GetNodeId(next)))
+        {
+            next = RemoveAndGetNext(next);
+        }
+        else
+        {
+            next = GetNextNode(next);
+        }
     }
-  }
 }
 
-void ArticleScraper::Clean(lxb_dom_node_t *element, std::string tag) {
-  std::unordered_set<std::string> embeds = {"OBJECT", "EMBED", "IFRAME"};
-  auto isEmbed = embeds.find(tag) != embeds.end();
-  auto nodesToRemove = GetElementsByTagName(element, tag);
-  RemoveNodes(nodesToRemove, [this, isEmbed](lxb_dom_node_t *node) {
-    if (isEmbed) {
-      if (HasVideoAttribute(node))
-        return false;
+void ArticleScraper::Clean(lxb_dom_node_t *element, std::string tag)
+{
+    std::unordered_set<std::string> embeds = {"OBJECT", "EMBED", "IFRAME"};
+    auto isEmbed = embeds.find(tag) != embeds.end();
+    auto nodesToRemove = GetElementsByTagName(element, tag);
+    RemoveNodes(nodesToRemove, [this, isEmbed](lxb_dom_node_t *node)
+        {
+            if (isEmbed)
+            {
+                if (HasVideoAttribute(node))
+                    return false;
+            }
+            return true;
+        });
+}
+
+
+
+void ArticleScraper::CleanConditionally(lxb_dom_node_t *element, std::string tag)
+{
+    if (!IsFlagActive(FLAG_CLEAN_CONDITIONALLY))
+    {
+        return;
     }
-    return true;
-  });
-}
-
-
-
-void ArticleScraper::CleanConditionally(lxb_dom_node_t *element,
-                                        std::string tag) {
-  if (!IsFlagActive(FLAG_CLEAN_CONDITIONALLY)) {
-    return;
-  }
-  auto nodesToRemove = GetElementsByTagName(element, tag);
-  RemoveNodes(nodesToRemove, [this, tag](lxb_dom_node_t *node) {
-    auto isDataTable = [this](lxb_dom_node_t *node) {
-      auto readabilityDataTable = GetAttribute(node, "readabilityDataTable");
-      bool isDataTable = readabilityDataTable == "0" ? false : true;
-      return isDataTable;
-    };
+    auto nodesToRemove = GetElementsByTagName(element, tag);
+    RemoveNodes(nodesToRemove, [this, tag](lxb_dom_node_t *node) {
+        auto isDataTable = [this](lxb_dom_node_t *node) {
+            auto readabilityDataTable = GetAttribute(node, "readabilityDataTable");
+            bool isDataTable = readabilityDataTable == "0" ? false : true;
+            return isDataTable;
+        };
 
     bool isList = tag == "UL" || tag == "OL";
-    if (!isList) {
-      int listLength = 0;
-      auto listNodes = GetAllNodesWithTag(node, {"UL", "OL"});
-      for (auto &listNode : listNodes) {
-        listLength += GetInnerText(listNode).size();
-      }
-      isList = (double)listLength / (double)GetInnerText(node).size() > 0.9;
+    if (!isList)
+    {
+        int listLength = 0;
+        auto listNodes = GetAllNodesWithTag(node, {"UL", "OL"});
+        for (auto &listNode : listNodes)
+        {
+            listLength += GetInnerText(listNode).size();
+        }
+        isList = (double)listLength / (double)GetInnerText(node).size() > 0.9;
     }
 
-    if (tag == "TABLE" && isDataTable(node)) {
-
-      return false;
+    if (tag == "TABLE" && isDataTable(node))
+    {
+        return false;
     }
 
-    if (HasAncestorTag(node, "TABLE", -1, isDataTable)) {
-      return false;
+    if (HasAncestorTag(node, "TABLE", -1, isDataTable))
+    {
+        return false;
     }
 
-    if (HasAncestorTag(node, "CODE")) {
-      return false;
+    if (HasAncestorTag(node, "CODE"))
+    {
+        return false;
     }
 
     if (SomeNode(GetElementsByTagName(node, "TABLE"),
@@ -1065,70 +1165,75 @@ bool ArticleScraper::HasVideoAttribute(lxb_dom_node_t *node) {
   return false;
 }
 
-double ArticleScraper::TextSimilarity(std::string textA, std::string textB) {
-  auto tokenize = [this](std::string s) {
-    std::vector<std::string> tokens;
-    auto pattern = this->REGEXPS.at(RegexPattern::TOKENIZE);
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    std::sregex_token_iterator it(s.begin(), s.end(), pattern, -1);
-    std::sregex_token_iterator end;
+double ArticleScraper::TextSimilarity(std::string textA, std::string textB)
+{
+    auto tokenize = [this](std::string s) {
+        std::vector<std::string> tokens;
+        auto pattern = this->REGEXPS.at(RegexPattern::TOKENIZE);
+        std::transform(s.begin(), s.end(), s.begin(),
+                    [](unsigned char c) { return std::tolower(c); });
+        std::sregex_token_iterator it(s.begin(), s.end(), pattern, -1);
+        std::sregex_token_iterator end;
 
-    for (; it != end; ++it) {
-      std::string token = *it;
-      if (!token.empty()) { // equivalent of filter(Boolean)
-        tokens.push_back(token);
-      }
+        for (; it != end; ++it)
+        {
+            std::string token = *it;
+            if (!token.empty()) { // equivalent of filter(Boolean)
+                tokens.push_back(token);
+            }
+        }
+
+        return tokens;
+    };
+
+    auto tokensA = tokenize(textA);
+    auto tokensB = tokenize(textB);
+    if (!tokensA.size() || !tokensB.size())
+        return 0.0;
+
+    std::vector<std::string> uniqTOkensB;
+    for (auto token : tokensB)
+    {
+        auto found = std::find(tokensA.begin(), tokensA.end(), token) != tokensA.end();
+        if (!found) {
+            uniqTOkensB.push_back(token);
+        }
     }
-
-    return tokens;
-  };
-
-  auto tokensA = tokenize(textA);
-  auto tokensB = tokenize(textB);
-  if (!tokensA.size() || !tokensB.size())
-    return 0.0;
-
-  std::vector<std::string> uniqTOkensB;
-  for (auto token : tokensB) {
-    auto found =
-        std::find(tokensA.begin(), tokensA.end(), token) != tokensA.end();
-    if (!found) {
-      uniqTOkensB.push_back(token);
+    auto join = [](std::vector<std::string> tokens) {
+        std::string joinedString = "";
+        for (int i = 0; i < tokens.size(); i++) {
+            if (i > 0)
+                joinedString += " ";
+            joinedString += tokens[i];
     }
-  }
-  auto join = [](std::vector<std::string> tokens) {
-    std::string joinedString = "";
-    for (int i = 0; i < tokens.size(); i++) {
-      if (i > 0)
-        joinedString += " ";
-      joinedString += tokens[i];
-    }
-    return joinedString;
-  };
-  double distanceB = join(uniqTOkensB).size() / join(tokensB).size();
-  return 1 - distanceB;
+        return joinedString;
+    };
+    double distanceB = (double)join(uniqTOkensB).size() /   (double)join(tokensB).size();
+    return 1 - distanceB;
 }
 
-bool ArticleScraper::HeaderDuplicateTitle(lxb_dom_node_t *element) {
-  auto nodeTag = GetTagName(element);
-  if (nodeTag != "H1" && nodeTag != "H2")
-    return false;
+bool ArticleScraper::HeaderDuplicateTitle(lxb_dom_node_t *element)
+{
+    auto nodeTag = GetTagName(element);
+    if (nodeTag != "H1" && nodeTag != "H2")
+        return false;
 
-  auto heading = GetInnerText(element, false);
+    auto heading = GetInnerText(element, false);
 
-  return TextSimilarity(this->articleTitle, heading) > 0.75;
+    return TextSimilarity(this->articleTitle, heading) > 0.75;
 }
 
-void ArticleScraper::RemoveScripts() {
-  auto script_nodes = GetAllNodesWithTag(root, {"SCRIPT", "NOSCRIPT"});
-  RemoveNodes(script_nodes, nullptr);
+void ArticleScraper::RemoveScripts()
+{
+    auto script_nodes = GetAllNodesWithTag(root, {"SCRIPT", "NOSCRIPT"});
+    RemoveNodes(script_nodes, nullptr);
 }
 
-lxb_dom_node_t *ArticleScraper::GetLastChild(lxb_dom_node_t *node) {
-  if (node == nullptr)
-    return nullptr;
-  return node->last_child;
+lxb_dom_node_t *ArticleScraper::GetLastChild(lxb_dom_node_t *node)
+{
+    if (node == nullptr)
+        return nullptr;
+    return node->last_child;
 }
 
 /**
@@ -1196,29 +1301,39 @@ void ArticleScraper::ReplaceBrs(lxb_dom_node_t *element) {
   }
 }
 
-void ArticleScraper::ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes,
-                                     const std::string &newTag) {
-  for (auto node : nodes) {
-    SetNodeTag(node, newTag);
-  }
+void ArticleScraper::ReplaceNodeTags(std::vector<lxb_dom_node_t *> nodes, const std::string &newTag)
+{
+    for (auto node : nodes)
+    {
+        SetNodeTag(node, newTag);
+    }
 }
 
-void ArticleScraper::PrepDocument() {
-  auto doc = this->doc;
-  auto style_nodes = GetAllNodesWithTag(root, {"STYLE"});
-  RemoveNodes(style_nodes, nullptr);
-  if (doc->body) {
-    ReplaceBrs(dom);
-  }
+void ArticleScraper::PrepDocument()
+{
+    if(isDebugMode)
+        LOG_INFO("starting prepering document");
 
-  // this._replaceNodeTags(this._getAllNodesWithTag(doc, ["font"]), "SPAN");
-  auto font_nodes = GetAllNodesWithTag(root, {"FONT"});
-  ReplaceNodeTags(font_nodes, "SPAN");
+    auto doc = this->doc;
+    auto style_nodes = GetAllNodesWithTag(root, {"STYLE"});
+    RemoveNodes(style_nodes, nullptr);
+    if (doc->body)
+    {
+        ReplaceBrs(dom);
+    }
+
+    // this._replaceNodeTags(this._getAllNodesWithTag(doc, ["font"]), "SPAN");
+    auto font_nodes = GetAllNodesWithTag(root, {"FONT"});
+    ReplaceNodeTags(font_nodes, "SPAN");
+
+    if(isDebugMode)
+        LOG_INFO("finished preparing document");
 }
 
 void ArticleScraper::ParseHTML(std::string html_page) {
 
-    LOG_INFO("html parsing started");
+    if(isDebugMode)
+        LOG_INFO("html parsing started");
     doc = lxb_html_document_create();
     if (doc == nullptr) {
         FreeResources();
@@ -1235,15 +1350,23 @@ void ArticleScraper::ParseHTML(std::string html_page) {
 
   dom = lxb_dom_interface_node(lxb_html_document_body_element(doc));
   root = lxb_dom_interface_node(doc->dom_document.element);
+
+  if(isDebugMode)
+      LOG_INFO("html parsing finished");
 }
 
-void ArticleScraper::FreeResources() {
-  if (doc != nullptr) {
-    lxb_html_document_destroy(doc);
-    doc = nullptr;
-    dom = nullptr;
-    root = nullptr;
-  }
+void ArticleScraper::FreeResources()
+{
+    if(isDebugMode)
+        LOG_INFO("freeing resources");
+
+    if (doc != nullptr)
+    {
+        lxb_html_document_destroy(doc);
+        doc = nullptr;
+        dom = nullptr;
+        root = nullptr;
+    }
 }
 
 /**
@@ -1258,7 +1381,11 @@ void ArticleScraper::UnwrapNoScriptImages() {}
 
 ArticleScraper::~ArticleScraper() { FreeResources(); }
 
-void ArticleScraper::MarkDataTables(lxb_dom_node_t *root) {
+void ArticleScraper::MarkDataTables(lxb_dom_node_t *root)
+{
+  if(isDebugMode)
+      LOG_INFO("MArking data table from root: {}", GetNodeInfo(root));
+
   auto tables = GetElementsByTagName(root, "TABLE");
   for (size_t i = 0; i < tables.size(); i++) {
     auto table = tables[i];
@@ -1530,6 +1657,9 @@ void ArticleScraper::SetAttribute(lxb_dom_node_t *node, const std::string &attr_
     return;
   }
 
+  if(isDebugMode)
+      LOG_INFO("Setting attribute {} with value {} on node {}", attr_name, value, GetNodeInfo(node));
+
   lxb_dom_element_set_attribute(
       lxb_dom_interface_element(node),
       reinterpret_cast<const lxb_char_t *>(
@@ -1544,6 +1674,9 @@ void ArticleScraper::RemoveAttribute(lxb_dom_node_t *node, const std::string &at
   if (node == nullptr || !IsElementNode(node)) {
     return;
   }
+
+  if(isDebugMode)
+      LOG_INFO("removing attribute {} from node {}", attr_name, GetNodeInfo(node));
 
   lxb_dom_element_remove_attribute(lxb_dom_interface_element(node),
                                    reinterpret_cast<const lxb_char_t *>(
@@ -1680,6 +1813,9 @@ void ArticleScraper::RemoveNode(lxb_dom_node_t *node) {
   if (node == nullptr)
     return;
 
+  if(isDebugMode)
+      LOG_INFO("Removing node: {}", GetNodeInfo(node));
+
   lxb_dom_node_remove(node);
 }
 
@@ -1687,7 +1823,8 @@ void ArticleScraper::RemoveNode(lxb_dom_node_t *node) {
 lxb_dom_node_t *ArticleScraper::RemoveAndGetNext(lxb_dom_node_t *node) {
   if (node == nullptr)
     return nullptr;
-  auto next_node = GetNextNode(node);
+
+  auto next_node = GetNextNode(node, true);
   RemoveNode(node);
   return next_node;
 }
@@ -2048,26 +2185,40 @@ std::string ArticleScraper::GetStyleAttribute(lxb_dom_node_t *node,
 // Is this node probably visible? (not display:none, not hidden, etc.)
 bool ArticleScraper::IsProbablyVisible(lxb_dom_node_t *node) {
 
-  if (node == nullptr || !IsElementNode(node))
-    return false;
+    auto display = GetStyleAttribute(node, "display");
+    auto visibility = GetStyleAttribute(node, "visibility");
 
-  auto display = GetStyleAttribute(node, "display");
-  if (!display.empty() && display == "none")
-    return false;
+    return (
+        display.empty() || display != "none" &&
+        visibility.empty() || visibility != "hidden" &&
+        !HasAttribute(node, "hidden") &&
+        (
+            !HasAttribute(node, "aria-hidden") ||
+            GetAttribute(node, "aria-hidden") != "true" ||
+            GetNodeClass(node).find("fallback-image") == std::string::npos
+        )
+    );
+    // old function definition
+    /*
+    if (node == nullptr || !IsElementNode(node))
+        return false;
 
-  auto visibility = GetStyleAttribute(node, "visibility");
-  if (!visibility.empty() && visibility == "hidden")
-    return false;
+    if (!display.empty() && display == "none")
+        return false;
 
-  if (HasAttribute(node, "hidden"))
-    return false;
+    if (!visibility.empty() && visibility == "hidden")
+        return false;
 
-  if (HasAttribute(node, "aria-hidden") &&
-      GetAttribute(node, "aria-hidden") == "true" &&
-      GetNodeClass(node).find("fallback-image") == std::string::npos)
-    return false;
+    if (HasAttribute(node, "hidden"))
+        return false;
 
-  return true;
+    if (HasAttribute(node, "aria-hidden") &&
+        GetAttribute(node, "aria-hidden") == "true" &&
+        GetNodeClass(node).find("fallback-image") == std::string::npos)
+        return false;
+
+    return true;
+    */
 }
 
 // Initialize a node with base content score from its tag type

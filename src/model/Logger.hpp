@@ -4,6 +4,7 @@
 #include <iostream>
 #include <format>
 #include <string>
+#include <utility>
 // Enum to represent log levels
 enum LogLevel { DEBUG, INFO, WARNING, ERROR, NONE };
 
@@ -17,12 +18,15 @@ class Logger {
         };
 
         void SetLevel(LogLevel level) { level_ = level; };
+
         template <typename... Args>
-            void Log(LogLevel level, const std::string& fmt, Args&&... args) {
-                if (level < level_) return;
-                std::cerr << "[" << LevelName(level) << "] "
-                    << std::vformat(fmt, std::make_format_args<Args>(args...)) << "\n";
-            }
+        void Log(LogLevel level, std::format_string<Args...> fmt, Args&&... args)
+        {
+                // if (level < level_) return;
+                std::cout   << "[" << LevelName(level) << "] "
+                            << std::format(fmt, std::forward<Args>(args)...)
+                            << "\n";
+        }
 
     private:
         LogLevel level_ = LogLevel::INFO;

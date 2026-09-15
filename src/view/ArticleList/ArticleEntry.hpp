@@ -14,8 +14,8 @@ class ArticleEntry : public ftxui::ComponentBase
 {
 public:
     ArticleEntry(StoryDataBlock article, std::function<void(StoryDataBlock)> on_select) :
-     article_(article), 
-     on_select_(on_select) 
+     article_(article),
+     on_select_(on_select)
      {};
 
     ftxui::Element OnRender() override
@@ -29,22 +29,22 @@ public:
                                                  ftxui::text(std::format("Score: {}", article_.score_)) | ftxui::notflex,
                                                  ftxui::text(" - ") | ftxui::notflex,
                                                  ftxui::text(std::format("Comments({})", article_.descendants_)) | ftxui::notflex}),
-                                    
+
                                 }) | ftxui::notflex;
 
         // Add visual cues when highlighted by keyboard navigation
         if (Focused())
         {
-            content = content | inverted | focus;
+            content = content | ftxui::inverted | ftxui::focus;
         }
         return content | reflect(box_);
     }
 
     bool OnEvent(ftxui::Event event) override
     {
-        
+
         if(event == ftxui::Event::Escape){
-            on_select_(this->article_);       
+            on_select_(this->article_);
             return true;
         }
 
@@ -59,7 +59,7 @@ public:
                 }
             }
         }
-        
+
 
         return ftxui::ComponentBase::OnEvent(event);
     }
@@ -71,7 +71,7 @@ public:
 
 private:
     std::function<void(StoryDataBlock)> on_select_;
-    Box box_;
+    ftxui::Box box_;
     StoryDataBlock article_;
 };
 

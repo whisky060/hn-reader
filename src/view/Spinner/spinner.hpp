@@ -36,7 +36,7 @@ public:
             "-",
             "\\"};
         tot_frames_ = char_set_.size();
-       
+
     };
 
     template <size_t N>
@@ -65,20 +65,20 @@ public:
                                                                                                            1.0f,
                                                                                                            duration_,
                                                                                                            ftxui::animation::easing::Linear,
-                                                                                                           delay_)) 
+                                                                                                           delay_))
     {
     };
 
 
     ftxui::Element OnRender() override
     {
-        
+
         int pattern_indx = static_cast<int>(progres_ * tot_frames_) % tot_frames_;
 
         return ftxui::text(char_set_[pattern_indx]);
     }
 
-    void OnAnimation(ftxui::animation::Params& p) override 
+    void OnAnimation(ftxui::animation::Params& p) override
     {
         animator_.OnAnimation(p);
         if (animator_.to() == progres_) {  // reached 1.0
@@ -99,12 +99,12 @@ private:
     ftxui::animation::Animator animator_;
 };
 
-ftxui::Component Spinner()
+inline ftxui::Component Spinner()
 {
     return ftxui::Make<ImpSpinner>();
 }
 
-ftxui::Component Spinner(Pattern char_set, Duration duration = 250ms, Duration delay = 0ms)
+inline ftxui::Component Spinner(Pattern char_set, Duration duration = 250ms, Duration delay = 0ms)
 {
     return ftxui::Make<ImpSpinner>(char_set,duration,delay);
 }

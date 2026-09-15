@@ -40,6 +40,7 @@ private:
     void SimplifyNestedElements(lxb_dom_node_t* articleContent);
     void PostProcessContent(lxb_dom_node_t* articleContent);
     void CleanClasses(lxb_dom_node_t* node);
+    std::string GetNodeInfo(lxb_dom_node_t* node);
 
     // helpers
     std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);
@@ -383,7 +384,7 @@ private:
 public:
     ArticleScraper() : doc(nullptr), dom(nullptr) {};
     ~ArticleScraper();
-    std::string operator()(std::string html_page);
+    lxb_dom_node_t* operator()(std::string html_page);
 };
 
 #endif

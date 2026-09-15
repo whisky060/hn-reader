@@ -14,7 +14,9 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
 
 int main() {
   const std::string kUrl = "https://www.tomshardware.com/tech-industry/big-tech/lg-strongly-denies-tv-security-claims-says-tracking-and-snooping-concerns-not-true-online-investigation-claims-216-000-000-spy-tvs-record-audio";
-
+ // const std::string kUrl = "https://www.vals.ai/blogs/fable-solves-cyphral-distich";
+ // const std::string kUrl = "http://medium.com/booking-com-development/how-we-built-automated-capacity-testing-for-kafka-consumers-1853623bce78";
+ // const std::string kUrl = "https://www.theguardian.com/world/ng-interactive/2026/sep/14/israel-palestinian-living-conditions-eliminated-west-bank-human-rights-report";
   curl_global_init(CURL_GLOBAL_ALL);
   CURL *handle = curl_easy_init();
   if (handle == nullptr) {
@@ -30,7 +32,7 @@ int main() {
   curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(handle, CURLOPT_WRITEDATA, &html);
   curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
-  curl_easy_setopt(handle, CURLOPT_TIMEOUT, 10L);
+  curl_easy_setopt(handle, CURLOPT_TIMEOUT, 100L);
   curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
   curl_easy_setopt(handle, CURLOPT_USERAGENT,
                    "Mozilla/5.0 (compatible; hn-tui-reader/1.0)");
