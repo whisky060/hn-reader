@@ -56,9 +56,9 @@ int main() {
   std::cerr << "[fetched " << html.size() << " bytes from " << kUrl << "]\n";
 
   ArticleScraper scraper;
-  std::string article = scraper(html);
-  std::cout << article << "\n";
-  std::cerr << "[scraped " << article.size() << " bytes]\n";
+  //std::string article = scraper(html);
+  //std::cout << article << "\n";
+  //std::cerr << "[scraped " << article.size() << " bytes]\n";
 
   return 0;
 }

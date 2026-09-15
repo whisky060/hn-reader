@@ -383,6 +383,7 @@ private:
 
 public:
     ArticleScraper() : doc(nullptr), dom(nullptr) {};
+    ArticleScraper(ArticleScraper &other) : doc(other.doc), dom(other.dom) {}
     ~ArticleScraper();
     lxb_dom_node_t* operator()(std::string html_page);
 };

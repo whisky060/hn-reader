@@ -8,12 +8,19 @@
 #include "HNClient.hpp"
 #include "model/DataBlock.hpp"
 #include "IndexTracker.hpp"
-
+#include "model/ArticleScraper.hpp"
 
 class AppModel : public std::enable_shared_from_this<AppModel> {
     public:
         AppModel();
-        ~AppModel() = default;
+        ~AppModel()
+        {
+            if(scraper_)
+            {
+                delete scraper_;
+                scraper_ = nullptr;
+            }
+        };
 
         std::vector<ID> FetchTopStories();
         StoryDataBlock FetchStory(ID id);
@@ -26,8 +33,9 @@ class AppModel : public std::enable_shared_from_this<AppModel> {
         std::shared_ptr<const std::vector<StoryDataBlock>> GetArticlesList() const { return articles_list_.load(); }
 
     private:
-        
+
         std::shared_ptr<HNClient> client = std::make_shared<HNClient>();
+        ArticleScraper* scraper_;
         const int fetch_limit = 25;
         IndexTracker top_stories_;
         std::shared_ptr<std::vector<JobDataBlock>> job_list_;

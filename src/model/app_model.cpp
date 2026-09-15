@@ -1,4 +1,5 @@
 #include "app_model.hpp"
+#include "model/ArticleScraper.hpp"
 #include <stdexcept>
 #include <iostream>
 #include <future>
@@ -11,6 +12,7 @@ AppModel::AppModel()
    job_list_ = std::make_shared<std::vector<JobDataBlock>>();
    auto tmp = FetchTopStories();
    top_stories_ = IndexTracker(tmp);
+   scraper_ = new ArticleScraper();
 }
 
 std::vector<ID> AppModel::FetchTopStories()

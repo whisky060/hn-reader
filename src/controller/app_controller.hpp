@@ -31,7 +31,8 @@ private:
 
     Component curr_view;
     std::shared_ptr<AppModel> model_;
-    Component template_;
+    std::shared_ptr<AbstractTemplate> template_;
+
 };
 
 

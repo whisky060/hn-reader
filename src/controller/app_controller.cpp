@@ -1,10 +1,7 @@
 #include <ftxui/component/component.hpp>
 #include "app_controller.hpp"
-#include "view/template/Template.hpp"
 #include "view/template/BaseTemplate.hpp"
 #include "view/ArticleList/ArticleListView.hpp"
-#include <vector>
-#include <string>
 
 AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
 {
@@ -20,7 +17,7 @@ model_ = model;
                                         }
                             ));
     this->Add(template_);
-    
+
 }
 
 AppController::~AppController() {
@@ -33,14 +30,13 @@ Element AppController::OnRender() {
 }
 
 bool AppController::OnEvent(Event event)  {
-    // Handle events    
-    
-    
+    // Handle events
+
+
         if(ComponentBase::OnEvent(event))
         {
             return true;
         }
-    
-    return false; 
+
+    return false;
 }
- 

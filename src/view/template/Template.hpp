@@ -5,9 +5,6 @@
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/event.hpp>
-#include <thread>
-#include "utility/utility.h"
-
 
 
 /*
@@ -20,13 +17,15 @@
 class AbstractTemplate : public ftxui::ComponentBase
 {
 
-public:
-    AbstractTemplate(ftxui::Component main_view) : ftxui::ComponentBase(), main_view_(main_view) {}
-    virtual ~AbstractTemplate() = default;
-    virtual void ChangeView(ftxui::Component new_view) = 0;
+    public:
+        AbstractTemplate() = default;
+        virtual ~AbstractTemplate() = default;
+        virtual void ChangeView(ftxui::Component new_view) = 0;
+        virtual void PopView() = 0;
+        
+    private:
 
-private:
-    ftxui::Component main_view_;
+
 };
 
 #endif
