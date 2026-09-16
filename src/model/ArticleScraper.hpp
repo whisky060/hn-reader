@@ -3,8 +3,6 @@
 
 #include <lexbor/html/html.h>
 #include <string>
-#include <thread>
-#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <regex>
@@ -13,7 +11,7 @@
 #include <algorithm>
 #include "exeptions/html_parsing_error.hpp"
 #include "lexbor/dom/interface.h"
-#include "model/Logger.hpp"
+#include "model/ContentBlock.hpp"
 
 class ArticleScraper
 {
@@ -21,6 +19,8 @@ private:
     void ParseHTML(std::string html_page);
     void RemoveScripts();
     void PrepDocument();
+    ContentBlockType GetContentBlockType(std::string& tag);
+    void CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBlock>& blocks);
 
     lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
@@ -385,7 +385,7 @@ public:
     ArticleScraper() : doc(nullptr), dom(nullptr) {};
     ArticleScraper(ArticleScraper &other) : doc(other.doc), dom(other.dom) {}
     ~ArticleScraper();
-    lxb_dom_node_t* operator()(std::string html_page);
+    std::vector<ContentBlock> operator()(std::string html_page);
 };
 
 #endif

@@ -1,18 +1,18 @@
 #include "app_model.hpp"
+#include "lexbor/dom/interface.h"
 #include "model/ArticleScraper.hpp"
-#include <stdexcept>
 #include <iostream>
-#include <future>
 #include <thread>
 
 AppModel::AppModel()
 {
    articles_list_.store(std::make_shared<std::vector<StoryDataBlock>>());
+   articleContent_ = nullptr;
    comments_ = std::make_shared<std::vector<CommentDataBlock>>();
    job_list_ = std::make_shared<std::vector<JobDataBlock>>();
    auto tmp = FetchTopStories();
    top_stories_ = IndexTracker(tmp);
-   scraper_ = new ArticleScraper();
+   scraper_ = std::make_unique<ArticleScraper>();
 }
 
 std::vector<ID> AppModel::FetchTopStories()
@@ -69,6 +69,20 @@ JobDataBlock AppModel::FetchJob(ID id)
    return job_block;
 }
 
+void AppModel::GetArticle(std::string articleUrl)
+{
+   if(client == nullptr)
+      return;
+
+
+
+   articleContent_.store(nullptr);
+   std::thread([self = shared_from_this(), articleUrl]()
+   {
+      auto article = self->client->FetchArticle(articleUrl);
+      self->articleContent_.store(std::make_shared<std::vector<ContentBlock>>((*self->scraper_)(article)));
+   }).detach();
+}
 
 void AppModel::LoadMoreStories()
 {

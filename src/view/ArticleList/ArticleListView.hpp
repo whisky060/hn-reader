@@ -13,7 +13,7 @@
 #include "view/Spinner/spinner.hpp"
 
 ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
-                             std::function<void(StoryDataBlock)> on_select,
+                             std::function<void(std::string)> on_select,
                              std::function<void()> on_load,
                              std::function<bool()> is_loading)
 {
@@ -23,7 +23,7 @@ ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<Sto
     public:
         ImplArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
                         std::function<void()> on_load,
-                        std::function<void(StoryDataBlock)> on_select,
+                        std::function<void(std::string)> on_select,
                         std::function<bool()> is_loading) : ftxui::ComponentBase()
         {
             get_articles_ = get_articles;

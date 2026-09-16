@@ -1,6 +1,9 @@
 #include "model/ArticleScraper.hpp"
 #include "exeptions/scraping_exception.hpp"
 #include "lexbor/dom/interface.h"
+#include "model/ContentBlock.hpp"
+#include <climits>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <format>
@@ -9,7 +12,7 @@
 #include <string>
 #include <unordered_map>
 
-lxb_dom_node_t* ArticleScraper::operator()(std::string html_page) {
+std::vector<ContentBlock> ArticleScraper::operator()(std::string html_page) {
 
     ParseHTML(html_page);
 
@@ -31,8 +34,88 @@ lxb_dom_node_t* ArticleScraper::operator()(std::string html_page) {
 
 
     auto content = GetInnerHtml(articleNode);
+    std::vector<ContentBlock> blocks;
+    CollectBlocks(articleNode, blocks);
     FreeResources();
-    return articleNode;
+    return blocks;
+}
+
+
+ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
+{
+    if(tag == "TABLE")
+        return ContentBlockType::TABLE;
+    if(tag == "IMG")
+        return ContentBlockType::IMG;
+    if(tag == "CODE")
+        return ContentBlockType::CODE;
+    if(tag == "PRE")
+        return ContentBlockType::PRE;
+    if(tag == "BLOCKQUOTE")
+        return ContentBlockType::BLOCKQUOTE;
+    if(tag == "H1")
+        return ContentBlockType::H1;
+    if(tag == "H2")
+        return ContentBlockType::H2;
+    if(tag == "H3" || tag == "H4" || tag == "H5" || tag == "H6")
+        return ContentBlockType::H3;
+    if(tag == "P")
+        return ContentBlockType::P;
+    if(tag == "LI")
+        return ContentBlockType::LI;
+    if(tag == "A")
+        return ContentBlockType::A;
+    if(tag == "B")
+        return ContentBlockType::B;
+    if(tag == "I")
+        return ContentBlockType::I;
+    if(tag == "EM")
+        return ContentBlockType::EM;
+    if(tag == "TR")
+        return ContentBlockType::TABLEROW;
+    if(tag == "CAPTION" || tag == "FIGCAPTION")
+        return ContentBlockType::CAPTION;
+
+    return ContentBlockType::TEXT;
+
+}
+
+void ArticleScraper::CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBlock>& blocks)
+{
+    if (node == nullptr)
+        return;
+    auto tag = GetTagName(node);
+    auto child = GetFirstChild(node);
+    std::vector<ContentBlock> children;
+    for(; child != nullptr; child = GetNextSibling(child))
+    {
+        CollectBlocks(child, children);
+    }
+    auto type = GetContentBlockType(tag);
+    if(type == ContentBlockType::A)
+    {
+        auto url = GetAttribute(node, "href");
+        auto text = GetNodeTextContent(node);
+        blocks.push_back({type, text, url, children});
+        return;
+    }
+
+    if(type == ContentBlockType::IMG)
+    {
+        auto src = GetAttribute(node, "src");
+        blocks.push_back({type, "", src, children});
+        return;
+    }
+
+    if(type == ContentBlockType::TABLE)
+    {
+        blocks.push_back({type, "", "", children});
+        return;
+    }
+
+    blocks.push_back({type, GetNodeTextContent(node), "", children});
+
+    return;
 }
 
 std::string ArticleScraper::GetNodeInfo(lxb_dom_node_t *node)
