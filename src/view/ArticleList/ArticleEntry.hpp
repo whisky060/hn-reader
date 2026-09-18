@@ -13,7 +13,7 @@
 class ArticleEntry : public ftxui::ComponentBase
 {
 public:
-    ArticleEntry(StoryDataBlock article, std::function<void(StoryDataBlock)> on_select) :
+    ArticleEntry(StoryDataBlock article, std::function<void(std::string)> on_select) :
      article_(article),
      on_select_(on_select)
      {};
@@ -44,7 +44,7 @@ public:
     {
 
         if(event == ftxui::Event::Escape){
-            on_select_(this->article_);
+            on_select_(this->article_.url_);
             return true;
         }
 
@@ -70,7 +70,7 @@ public:
     }
 
 private:
-    std::function<void(StoryDataBlock)> on_select_;
+    std::function<void(std::string)> on_select_;
     ftxui::Box box_;
     StoryDataBlock article_;
 };

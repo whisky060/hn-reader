@@ -6,7 +6,7 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/mouse.hpp>
-#include <format>
+#include <string>
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
@@ -210,7 +210,7 @@ ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<Sto
         std::shared_ptr<const std::vector<StoryDataBlock>> articles_;
         std::vector<ftxui::Component> entries_;
         std::function<void()> on_load_;
-        std::function<void(StoryDataBlock)> on_select_;
+        std::function<void(std::string)> on_select_;
         std::function<bool()> is_loading_;
         std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles_;
         bool old_state;

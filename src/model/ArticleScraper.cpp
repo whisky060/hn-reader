@@ -2,8 +2,7 @@
 #include "exeptions/scraping_exception.hpp"
 #include "lexbor/dom/interface.h"
 #include "model/ContentBlock.hpp"
-#include <climits>
-#include <cmath>
+#include "model/Logger.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <format>
