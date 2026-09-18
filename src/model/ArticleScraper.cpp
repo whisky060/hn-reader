@@ -62,14 +62,18 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::P;
     if(tag == "LI")
         return ContentBlockType::LI;
+    if(tag == "UL" || tag == "OL" || tag == "DL")
+        return ContentBlockType::UL;
     if(tag == "A")
         return ContentBlockType::A;
-    if(tag == "B")
+    if(tag == "B" || tag == "STRONG" || tag == "BOLD")
         return ContentBlockType::B;
-    if(tag == "I")
+    if(tag == "I" || tag == "EM")
         return ContentBlockType::I;
-    if(tag == "EM")
-        return ContentBlockType::EM;
+    if(tag == "U" || tag == "UNDERLINE")
+        return ContentBlockType::U;
+    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER")
+        return ContentBlockType::DIV;
     if(tag == "TR")
         return ContentBlockType::TABLEROW;
     if(tag == "CAPTION" || tag == "FIGCAPTION")

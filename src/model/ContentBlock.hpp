@@ -1,6 +1,7 @@
 #ifndef CONTENT_BLOCK_HPP
 #define CONTENT_BLOCK_HPP
 #include <string>
+#include <sys/types.h>
 #include <vector>
 
 
@@ -16,16 +17,19 @@ enum ContentBlockType {
     PRE,
     B,
     I,
-    EM,
+    U,
+    DIV,
     BLOCKQUOTE,
     CODE,
     IMG,
     LI,
+    UL,
     CAPTION
 };
 
 struct ContentBlock
 {
+
 
     ContentBlockType type;
     std::string text;

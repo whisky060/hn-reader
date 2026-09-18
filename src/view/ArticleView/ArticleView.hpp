@@ -2,6 +2,7 @@
 #define ARTICLEVIEW
 
 
+#include <cstdio>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
@@ -117,52 +118,166 @@ class ArticleViewImp : public ftxui::ComponentBase {
         ftxui::Component CreateComponentFromBlock(ContentBlock& block)
         {
 
+            std::vector<ftxui::Component> components;
             switch(block.type)
             {
                 case ContentBlockType::H1:
                     return ftxui::Renderer([&block]{
-                        return ftxui::text(block.text + "\n") | ftxui::center | ftxui::bold;
+                        return ftxui::text("✺ " + block.text + " ✺") | ftxui::center | ftxui::bold;
                     });
                 case ContentBlockType::H2:
                     return ftxui::Renderer([&block]{
-                        return ftxui::text(block.text + "\n") | ftxui::center;
+                        return ftxui::text("❊ " + block.text + " ❊") | ftxui::center;
                     });
                 case ContentBlockType::H3:
                     return ftxui::Renderer([&block]{
-                        return ftxui::text(block.text + "\n") | ftxui::underlined;
+                        return ftxui::text("❃ " + block.text) | ftxui::underlined;
                     });
                 case ContentBlockType::P:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return  ftxui::vbox(
+                            ftxui::vbox(
+                                components
+                            ),
+                            ftxui::separator()
+                        );
+                    });
                 case ContentBlockType::TEXT:
-                    break;
+                    return ftxui::Renderer([&block]{
+                        return ftxui::text(block.text);
+                    });
+                case ContentBlockType::DIV:
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        );
+                    });
                 case ContentBlockType::A:
-                    break;
+                    return ftxui::Renderer([&block]{
+                        return ftxui::text(block.text + "[" + block.url + "]");
+                    });
                 case ContentBlockType::TABLE:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::border | ftxui::center;
+                    });
                 case ContentBlockType::TABLEROW:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::border;
+                    });
                 case ContentBlockType::PRE:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ); // TODO add a specific text color?
+                    });
                 case ContentBlockType::B:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::bold;
+                    });
                 case ContentBlockType::I:
-                    break;
-                case ContentBlockType::EM:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::italic;
+                    });
+                case ContentBlockType::UL:
+                    return CreateListItem(block, 0);
                 case ContentBlockType::BLOCKQUOTE:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::border | ftxui::center;
+                    });
+                case ContentBlockType::U:
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::underlined;
+                    });
                 case ContentBlockType::CODE:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::border | ftxui::center;
+                    });
                 case ContentBlockType::IMG:
                     break;
-                case ContentBlockType::LI:
-                    break;
                 case ContentBlockType::CAPTION:
-                    break;
+                    for(auto& child : block.children)
+                    {
+                        components.push_back(CreateComponentFromBlock(child));
+                    }
+                    return ftxui::Renderer([&components]{
+                        return ftxui::vbox(
+                            components
+                        ) | ftxui::center;
+                    });
                 default:
                     break;
             }
         };
+        ftxui::Component CreateListItem(ContentBlock& block, int depth)
+        {
+            std::vector<ftxui::Component> components;
+            for(auto& child : block.children)
+            {
+                switch (child.type) {
+                    case ContentBlockType::UL:
+                        components.push_back(CreateListItem(child, depth+1));
+                        break;
+                    default:
+                        components.push_back(CreateComponentFromBlock(child));
+                        break;
+                }
+            }
+
+        }
         void CreateArticleContent(){
             auto articleAST = articleContentGetter_();
             if(articleAST == nullptr)
@@ -180,6 +295,7 @@ class ArticleViewImp : public ftxui::ComponentBase {
         std::function<std::shared_ptr<std::vector<ContentBlock>>()> articleContentGetter_;
         ftxui::Component loadingSpinner_;
         ftxui::Component articleContent_;
+        std::vector<std::string> listDots_ = {"•", "◦", "▪"};
 };
 
 
