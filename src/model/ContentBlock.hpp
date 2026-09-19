@@ -18,6 +18,8 @@ enum ContentBlockType {
     B,
     I,
     U,
+    BR,
+    HR,
     DIV,
     BLOCKQUOTE,
     CODE,

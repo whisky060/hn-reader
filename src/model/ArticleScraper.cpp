@@ -32,7 +32,6 @@ std::vector<ContentBlock> ArticleScraper::operator()(std::string html_page) {
     PostProcessContent(articleNode);
 
 
-    auto content = GetInnerHtml(articleNode);
     std::vector<ContentBlock> blocks;
     CollectBlocks(articleNode, blocks);
     FreeResources();
@@ -52,7 +51,7 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::PRE;
     if(tag == "BLOCKQUOTE")
         return ContentBlockType::BLOCKQUOTE;
-    if(tag == "H1")
+    if(tag == "H1" || tag == "TITLE")
         return ContentBlockType::H1;
     if(tag == "H2")
         return ContentBlockType::H2;
@@ -72,15 +71,52 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::I;
     if(tag == "U" || tag == "UNDERLINE")
         return ContentBlockType::U;
-    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER")
+    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER" || "SPAN")
         return ContentBlockType::DIV;
     if(tag == "TR")
         return ContentBlockType::TABLEROW;
     if(tag == "CAPTION" || tag == "FIGCAPTION")
         return ContentBlockType::CAPTION;
+    if (tag == "BR")
+        return ContentBlockType::BR;
+    if (tag == "HR")
+        return ContentBlockType::HR;
 
     return ContentBlockType::TEXT;
 
+}
+
+bool ArticleScraper::IsLeafNode(ContentBlockType tag)
+{
+	return (
+		tag == ContentBlockType::TEXT ||
+		tag == ContentBlockType::IMG ||
+		tag == ContentBlockType::BR ||
+		tag == ContentBlockType::HR
+	);
+}
+
+bool ArticleScraper::IsContainerNode(ContentBlockType type)
+{
+	return (
+		type == ContentBlockType::DIV ||
+		type == ContentBlockType::PRE ||
+		type == ContentBlockType::CODE ||
+		type == ContentBlockType::TABLE ||
+		type == ContentBlockType::UL ||
+		type == ContentBlockType::I ||
+		type == ContentBlockType::LI ||
+		type == ContentBlockType::U ||
+		type == ContentBlockType::H1 ||
+		type == ContentBlockType::H2 ||
+		type == ContentBlockType::H3 ||
+		type == ContentBlockType::B ||
+		type == ContentBlockType::TABLEROW ||
+		type == ContentBlockType::CAPTION ||
+		type == ContentBlockType::A ||
+		type == ContentBlockType::P ||
+		type == ContentBlockType::BLOCKQUOTE
+	);
 }
 
 void ArticleScraper::CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBlock>& blocks)
@@ -89,34 +125,40 @@ void ArticleScraper::CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBloc
         return;
     auto tag = GetTagName(node);
     auto child = GetFirstChild(node);
-    std::vector<ContentBlock> children;
-    for(; child != nullptr; child = GetNextSibling(child))
-    {
-        CollectBlocks(child, children);
-    }
     auto type = GetContentBlockType(tag);
-    if(type == ContentBlockType::A)
+    std::vector<ContentBlock> children;
+    if(IsContainerNode(type))
     {
-        auto url = GetAttribute(node, "href");
-        auto text = GetNodeTextContent(node);
-        blocks.push_back({type, text, url, children});
-        return;
+        for(; child != nullptr; child = GetNextSibling(child))
+        {
+            CollectBlocks(child, children);
+        }
+        switch (type) {
+        	case ContentBlockType::A:
+         		blocks.push_back({type, "", GetAttribute(node, "href"), children});
+         		break;
+        	default:
+         		blocks.push_back({type, "", "", children});
+         		break;
+        }
     }
-
-    if(type == ContentBlockType::IMG)
+    else
     {
-        auto src = GetAttribute(node, "src");
-        blocks.push_back({type, "", src, children});
-        return;
+        switch (type) {
+        	case ContentBlockType::IMG:
+         		blocks.push_back({type, "", GetAttribute(node, "src"), children});
+         		break;
+        	case ContentBlockType::TEXT:
+         		blocks.push_back({type, GetNodeTextContent(node), "", children});
+           		break;
+         	case ContentBlockType::BR:
+         	case ContentBlockType::HR:
+         		blocks.push_back({type, "", "", children});
+         		break;
+         	default:
+          		break;
+        }
     }
-
-    if(type == ContentBlockType::TABLE)
-    {
-        blocks.push_back({type, "", "", children});
-        return;
-    }
-
-    blocks.push_back({type, GetNodeTextContent(node), "", children});
 
     return;
 }

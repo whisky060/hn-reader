@@ -21,6 +21,8 @@ private:
     void PrepDocument();
     ContentBlockType GetContentBlockType(std::string& tag);
     void CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBlock>& blocks);
+    bool IsLeafNode(ContentBlockType type);
+    bool IsContainerNode(ContentBlockType type);
 
     lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
