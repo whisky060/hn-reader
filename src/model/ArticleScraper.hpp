@@ -387,7 +387,7 @@ public:
     ArticleScraper() : doc(nullptr), dom(nullptr) {};
     ArticleScraper(ArticleScraper &other) : doc(other.doc), dom(other.dom) {}
     ~ArticleScraper();
-    std::vector<ContentBlock> operator()(std::string html_page);
+    ContentBlock operator()(std::string html_page);
 };
 
 #endif

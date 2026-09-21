@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 
-std::vector<ContentBlock> ArticleScraper::operator()(std::string html_page) {
+ContentBlock ArticleScraper::operator()(std::string html_page) {
 
     ParseHTML(html_page);
 
@@ -35,7 +35,8 @@ std::vector<ContentBlock> ArticleScraper::operator()(std::string html_page) {
     std::vector<ContentBlock> blocks;
     CollectBlocks(articleNode, blocks);
     FreeResources();
-    return blocks;
+    ContentBlock result(ContentBlockType::DIV, "", "", blocks);
+    return result;
 }
 
 

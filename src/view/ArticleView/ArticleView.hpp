@@ -16,7 +16,7 @@
 
 class ArticleViewImp : public ftxui::ComponentBase {
 public:
-  ArticleViewImp(std::function<std::shared_ptr<std::vector<ContentBlock>>()>
+  ArticleViewImp(std::function<std::shared_ptr<ContentBlock>()>
                      articleContentGetter) {
 
     articleContentGetter_ = articleContentGetter;
@@ -201,13 +201,7 @@ private:
     auto articleAST = articleContentGetter_();
     if (articleAST == nullptr)
       return;
-
-    articleContent_ = ftxui::Container::Vertical({});
-
-    for (auto &block : *articleAST) {
-      auto elem = CreateComponentFromBlock(block);
-      articleContent_->Add(ftxui::Renderer([elem] { return elem; }));
-    }
+    articleContent_ = ftxui::Renderer([this, articleAST] { return CreateComponentFromBlock(*articleAST); });
     this->Add(articleContent_);
   };
 
@@ -220,14 +214,14 @@ private:
                           ftxui::FlexboxConfig().SetGap(1, 0));
   };
 
-  std::function<std::shared_ptr<std::vector<ContentBlock>>()> articleContentGetter_;
+  std::function<std::shared_ptr<ContentBlock>()> articleContentGetter_;
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
   std::vector<std::string> listDots_ = {"•", "◦", "▪"};
 };
 
 inline ftxui::Component
-ArticleView(std::function<std::shared_ptr<std::vector<ContentBlock>>()>
+ArticleView(std::function<std::shared_ptr<ContentBlock>()>
                 articleContentGetter) {
   return ftxui::Make<ArticleViewImp>(articleContentGetter);
 }

@@ -80,7 +80,7 @@ void AppModel::GetArticle(std::string articleUrl)
    std::thread([self = shared_from_this(), articleUrl]()
    {
       auto article = self->client->FetchArticle(articleUrl);
-      self->articleContent_.store(std::make_shared<std::vector<ContentBlock>>((*self->scraper_)(article)));
+      self->articleContent_.store(std::make_shared<ContentBlock>((*self->scraper_)(article)));
    }).detach();
 }
 
