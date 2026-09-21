@@ -71,10 +71,12 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::I;
     if(tag == "U" || tag == "UNDERLINE")
         return ContentBlockType::U;
-    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER" || "SPAN")
+    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER" || tag == "SPAN")
         return ContentBlockType::DIV;
     if(tag == "TR")
-        return ContentBlockType::TABLEROW;
+        return ContentBlockType::TR;
+    if(tag == "TD")
+        return ContentBlockType::TD;
     if(tag == "CAPTION" || tag == "FIGCAPTION")
         return ContentBlockType::CAPTION;
     if (tag == "BR")
@@ -111,7 +113,8 @@ bool ArticleScraper::IsContainerNode(ContentBlockType type)
 		type == ContentBlockType::H2 ||
 		type == ContentBlockType::H3 ||
 		type == ContentBlockType::B ||
-		type == ContentBlockType::TABLEROW ||
+		type == ContentBlockType::TR ||
+		type == ContentBlockType::TD ||
 		type == ContentBlockType::CAPTION ||
 		type == ContentBlockType::A ||
 		type == ContentBlockType::P ||

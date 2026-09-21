@@ -43,7 +43,14 @@ public:
     bool OnEvent(ftxui::Event event) override
     {
 
-        if(event == ftxui::Event::Escape){
+    	if(!Focused())
+    	{
+    		return ftxui::ComponentBase::OnEvent(event);
+    	}
+
+    	// fired when enter is pressed
+        if(event == ftxui::Event::Return)
+        {
             on_select_(this->article_.url_);
             return true;
         }

@@ -12,10 +12,13 @@
 #include "view/ArticleList/ArticleEntry.hpp"
 #include "view/Spinner/spinner.hpp"
 
-ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
-                             std::function<void(std::string)> on_select,
-                             std::function<void()> on_load,
-                             std::function<bool()> is_loading)
+inline ftxui::Component ArticleList(
+							std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
+                            std::function<void(std::string)> on_select,
+                            std::function<void()> on_load,
+                            std::function<bool()> is_loading
+						)
+
 {
 
     class ImplArticleList : public ftxui::ComponentBase
@@ -131,6 +134,7 @@ ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<Sto
             for (auto &article : *articles_)
             {
                 entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
+
             }
             list_ = ftxui::Container::Vertical(entries_);
 
@@ -177,6 +181,17 @@ ftxui::Component ArticleList(std::function<std::shared_ptr<const std::vector<Sto
             old_state = loading;
 
             return list_->Render();
+        }
+
+
+        bool OnEvent(ftxui::Event event) override
+        {
+            return ftxui::ComponentBase::OnEvent(event);
+        }
+
+        bool Focusable() const override
+        {
+            return true;
         }
 
     private:
