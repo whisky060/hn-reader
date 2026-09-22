@@ -111,18 +111,16 @@ public:
   }
 
 private:
-  ftxui::Element CreateComponentFromBlock(ContentBlock &block) {
+  ftxui::Component CreateComponentFromBlock(ContentBlock &block) {
 
     std::vector<ftxui::Component> components;
     switch (block.type) {
     case ContentBlockType::BR:
-      return ftxui::separator();
+      return VisitBR(block);
     case ContentBlockType::HR:
-      return ftxui::separatorLight();
+      return VisitHR(block);
     case ContentBlockType::H1:
-      return ftxui::flexbox({ftxui::text("✺ "), Flatten(block.children),
-                             ftxui::text(" ✺")},
-                            ftxui::FlexboxConfig().SetGap(1, 0)) | ftxui::center | ftxui::bold;
+      return VisitH1(block);
     case ContentBlockType::H2:
       return ftxui::flexbox({ftxui::text("❊ "), Flatten(block.children),
                              ftxui::text(" ❊")},
@@ -205,15 +203,75 @@ private:
     this->Add(articleContent_);
   };
 
-  ftxui::Element Flatten(std::vector<ContentBlock> &blocks) {
-    std::vector<ftxui::Element> elements;
-    for (auto &block : blocks) {
-      elements.push_back(CreateComponentFromBlock(block));
-    }
-    return ftxui::flexbox(std::move(elements),
-                          ftxui::FlexboxConfig().SetGap(1, 0));
-  };
+  bool IsInNewLine(ContentBlockType tag)
+  {
+    return (
+      tag == ContentBlockType::P ||
+      tag == ContentBlockType::IMG ||
+      tag == ContentBlockType::TABLE ||
+      tag == ContentBlockType::H1 || 
+      tag == ContentBlockType::H2 ||
+      tag == ContentBlockType::H3 ||
+      tag == ContentBlockType::BR ||
+      tag == ContentBlockType::HR ||
+      tag == ContentBlockType::CODE ||
+      tag == ContentBlockType::UL 
+    );
+  }
 
+  ftxui::Component VisitBR(ContentBlock& block)
+  {
+    return ftxui::Renderer([]{
+        return ftxui::separator();
+    });
+  }
+
+  ftxui::Component VisitHR(ContentBlock& block)
+  {
+    return Renderer([]{
+      return ftxui::separatorDashed();
+    });
+  }
+
+  ftxui::Component VisitH1(ContentBlock& block)
+  {
+
+    ftxui::Elements inLineBuffer;
+    auto mainContainer = ftxui::Container::Vertical({});
+    
+    for(auto& child : block.children)
+    {
+      if(!IsInNewLine(child.type))
+      {
+        inLineBuffer.push_back(CreateComponentFromBlock(child)->Render());
+        continue;
+      }
+      auto line = FlushBuffer(inLineBuffer);
+      mainContainer->Add(line);
+      inLineBuffer.push_back(CreateComponentFromBlock(child)->Render());
+
+    }
+
+    return 
+    ;
+
+    // return ftxui::flexbox({ftxui::text("✺ "), Flatten(block.children),
+    //                         ftxui::text(" ✺")},
+    //                        ftxui::FlexboxConfig().SetGap(1, 0)) | ftxui::center | ftxui::bold;
+  };
+  ftxui::Component FlushBuffer(ftxui::Elements& buffer)
+  {
+    
+      auto box = ftxui::flexbox(buffer, ftxui::FlexboxConfig({
+                          	.direction = ftxui::FlexboxConfig::Direction::Row,
+                          	.wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+                          }).SetGap(1, 0));
+
+      buffer.clear();
+      return ftxui::Renderer([box]{
+          return box;
+      });
+  };
   std::function<std::shared_ptr<ContentBlock>()> articleContentGetter_;
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
