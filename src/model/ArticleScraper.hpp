@@ -203,7 +203,7 @@ private:
     lxb_html_document_t *doc;
     lxb_dom_node_t *dom;
     lxb_dom_node_t* root;
-    bool isDebugMode = true;
+    bool isDebugMode = false;
     std::string articleLang;
     std::string articleByline;
     std::string articleTitle;
