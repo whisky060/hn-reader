@@ -1,5 +1,6 @@
 #ifndef ARTICLEENTRY_H
 #define ARTICLEENTRY_H
+#include <filesystem>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
@@ -21,13 +22,15 @@ public:
     ftxui::Element OnRender() override
     {
         auto content = ftxui::vbox({ftxui::text(article_.title_) | ftxui::notflex,
-                                    ftxui::separator(),
+        							ftxui::separator(),
                                     ftxui::hbox({ftxui::text(article_.author_) | ftxui::notflex,
                                                  ftxui::text(" - ") | ftxui::notflex,
                                                  ftxui::text(utils::GetDateFromUnix(article_.time_)) | ftxui::notflex,
                                                  ftxui::text(" - ") | ftxui::notflex,
                                                  ftxui::text(std::format("Score: {}", article_.score_)) | ftxui::notflex,
                                                  ftxui::text(" - ") | ftxui::notflex,
+                                                 ftxui::text(std::format("Url: {}", article_.url_)) | ftxui::notflex | ftxui::hyperlink(article_.url_),
+                                                 ftxui::text(" - "),
                                                  ftxui::text(std::format("Comments({})", article_.descendants_)) | ftxui::notflex}),
 
                                 }) | ftxui::notflex;
