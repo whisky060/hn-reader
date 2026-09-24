@@ -29,7 +29,7 @@ public:
                                                  ftxui::text(" - ") | ftxui::notflex,
                                                  ftxui::text(std::format("Score: {}", article_.score_)) | ftxui::notflex,
                                                  ftxui::text(" - ") | ftxui::notflex,
-                                                 ftxui::text(std::format("Url: {}", article_.url_)) | ftxui::notflex | ftxui::hyperlink(article_.url_),
+                                                 ftxui::text(std::format("Url: {}", article_.url_)) | ftxui::notflex,  //| ftxui::hyperlink(article_.url_),
                                                  ftxui::text(" - "),
                                                  ftxui::text(std::format("Comments({})", article_.descendants_)) | ftxui::notflex}),
 
