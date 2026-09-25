@@ -17,10 +17,14 @@
 
 class ArticleViewImp : public ftxui::ComponentBase {
 public:
-  ArticleViewImp(std::function<std::shared_ptr<ContentBlock>()> articleContentGetter)
+  ArticleViewImp(
+  	std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
+  	std::function<void()> exitCallback
+  )
   {
 
     articleContentGetter_ = articleContentGetter;
+    exitCallback_ = exitCallback;
     articleContent_ = nullptr;
     std::string first_pattern[] = {
 
@@ -113,6 +117,7 @@ public:
 
   		if(event == ftxui::Event::Escape)
     	{
+     		exitCallback_();
      		return true;
      	}
 
@@ -133,7 +138,7 @@ private:
     return component->Render();
   };
 
-  ftxui::Component CreateComponentFromBlock(ContentBlock &block) {
+  ftxui::Element CreateFromBlock(ContentBlock &block) {
 
     std::vector<ftxui::Component> components;
     switch (block.type) {
@@ -230,14 +235,17 @@ private:
             tag == ContentBlockType::TABLE || tag == ContentBlockType::H1 ||
             tag == ContentBlockType::H2 || tag == ContentBlockType::H3 ||
             tag == ContentBlockType::BR || tag == ContentBlockType::HR ||
-            tag == ContentBlockType::CODE || tag == ContentBlockType::UL);
+            tag == ContentBlockType::CODE || tag == ContentBlockType::UL ||
+            tag == ContentBlockType::DIV || tag == ContentBlockType::PRE ||
+            tag == ContentBlockType::BLOCKQUOTE ||
+            tag == ContentBlockType::CAPTION || tag == ContentBlockType::TR);
   }
 
-  ftxui::Component VisitBR(ContentBlock &block) {
-    return ftxui::Renderer([] { return ftxui::separator() ;    });
+  ftxui::Element VisitBR(ContentBlock &block) {
+    return return ftxui::separator();
   }
 
-  ftxui::Component VisitHR(ContentBlock &block) {
+  ftxui::Element VisitHR(ContentBlock &block) {
     return ftxui::Renderer([] { return ftxui::separatorDashed() ; });
   }
 
@@ -343,7 +351,7 @@ private:
   }
 
   ftxui::Component VisitTEXT(ContentBlock &block) {
-    return ftxui::Renderer([block] { return ftxui::paragraph(block.text) ; });
+    return ftxui::Renderer([block] { return ftxui::paragraph(block.text); });
   }
 
   ftxui::Component VisitDIV(ContentBlock &block) {
@@ -361,7 +369,7 @@ private:
     }
     auto line = FlushBuffer(inLineBuffer);
     mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer] { return mainContainer->Render() ; });
+    return ftxui::Renderer([mainContainer] { return mainContainer->Render(); });
   }
 
   ftxui::Component VisitA(ContentBlock &block) {
@@ -380,7 +388,7 @@ private:
     auto line = FlushBuffer(inLineBuffer);
     mainContainer->Add(line);
     return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render() | ftxui::hyperlink(url) ;
+      return mainContainer->Render() | ftxui::hyperlink(url);
     });
   };
 
@@ -400,7 +408,7 @@ private:
     auto line = FlushBuffer(inLineBuffer);
     mainContainer->Add(line);
     return ftxui::Renderer(
-        [mainContainer] { return mainContainer->Render() | ftxui::border ; });
+        [mainContainer] { return mainContainer->Render() | ftxui::border; });
   }
 
   ftxui::Component VisitTR(ContentBlock &block) {
@@ -414,8 +422,7 @@ private:
       }
       auto line = FlushBuffer(inLineBuffer);
       mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ) |
-                             ftxui::border);
+      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ) | ftxui::border);
     }
     auto line = FlushBuffer(inLineBuffer);
     mainContainer->Add(line);
@@ -438,7 +445,7 @@ private:
     }
 
     return ftxui::Renderer([mainContainer] {
-      return mainContainer->Render() | ftxui::center | ftxui::notflex;
+      return mainContainer->Render() | ftxui::center;
     });
   };
 
@@ -477,7 +484,7 @@ private:
     auto line = FlushBuffer(inLineBuffer);
     mainContainer->Add(line);
     return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render() | ftxui::italic ;
+      return mainContainer->Render() | ftxui::italic;
     });
   };
 
@@ -499,8 +506,7 @@ private:
     mainContainer->Add(line);
 
     return ftxui::Renderer([mainContainer] {
-      return mainContainer->Render() | ftxui::border | ftxui::center |
-             ftxui::notflex;
+      return mainContainer->Render() | ftxui::border | ftxui::center;
     });
   }
 
@@ -540,13 +546,13 @@ private:
     auto line = FlushBuffer(inLineBuffer);
     mainContainer->Add(line);
     return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render();
+      return mainContainer->Render() ;
     });
   }
 
   ftxui::Component VisitIMG(ContentBlock &block) {
     return ftxui::Renderer([url = block.url] {
-      return ftxui::text("📸") | ftxui::hyperlink(url) | ftxui::notflex;
+      return ftxui::text("📸") | ftxui::hyperlink(url) | ftxui::notflex ;
     });
   }
 
@@ -576,21 +582,25 @@ private:
       element |= ftxui::xflex_shrink;
     }
 
-    auto box = ftxui::dbox(buffer) ;
+    auto box = ftxui::hbox(buffer) ;
 
     buffer.clear();
     return ftxui::Renderer([box] { return box; });
   };
   std::function<std::shared_ptr<ContentBlock>()> articleContentGetter_;
+  std::function<void()> exitCallback_;
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
   std::vector<std::string> listDots_ = {"•", "◦", "▪"};
   std::vector<ftxui::Component> tempComponents_;
 };
 
-inline ftxui::Component ArticleView(std::function<std::shared_ptr<ContentBlock>()> articleContentGetter)
+inline ftxui::Component ArticleView(
+	std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
+	std::function<void()> exitCallback
+)
 {
-  return ftxui::Make<ArticleViewImp>(articleContentGetter);
+  return ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback);
 }
 
 #endif

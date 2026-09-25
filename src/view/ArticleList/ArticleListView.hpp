@@ -10,7 +10,7 @@
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
-#include "view/Spinner/spinner.hpp"
+#include "widgets/Spinner/spinner.hpp"
 
 inline ftxui::Component ArticleList(
 							std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,

@@ -50,7 +50,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
         {
             time_ = utils::GetCurrentDate();
             return ftxui::vbox({
-                viewStack_.top()->Render()  | ftxui::vscroll_indicator | ftxui::frame | ftxui::flex ,
+                viewStack_.top()->Render()  | ftxui::vscroll_indicator | ftxui::yframe | ftxui::flex ,
                 ftxui::filler() | ftxui::flex,
                 ftxui::separatorCharacter("-") | ftxui::notflex,
                 bottom_bar_->Render() | ftxui::notflex
@@ -59,8 +59,12 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
 
         void ChangeView(ftxui::Component new_view) override
         {
+        	auto top = viewStack_.top();
+        	if (top)
+        		top->Detach();
             viewStack_.push(new_view);
             this->Add(viewStack_.top());
+            viewStack_.top()->TakeFocus();
         }
 
         void PopView() override
@@ -69,6 +73,12 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
                 return;
             auto oldView = viewStack_.top();
             viewStack_.pop();
+            if (!viewStack_.empty())
+            {
+            	auto top = viewStack_.top();
+            	this->Add(top);
+            	top->TakeFocus();
+            }
             oldView->Detach();
         }
 

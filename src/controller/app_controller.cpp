@@ -16,8 +16,12 @@ model_ = model;
                                         [this, model = model_](std::string articleUrl)
                                         {
 
-                                            model->GetArticle("https://antirez.com/news/172");
-                                            auto articleContent = ArticleView([model = model]() { return model->GetArticleContent(); });
+                                            model->GetArticle(articleUrl);
+                                            auto articleContent = ArticleView(
+                                            	[model = model]() { return model->GetArticleContent(); },
+                                            	[this]() { this->template_->PopView(); }
+                                            );
+
                                             this->template_->ChangeView(articleContent);
                                         },
                                         [this]()
