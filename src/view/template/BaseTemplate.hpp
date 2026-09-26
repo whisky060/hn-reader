@@ -50,7 +50,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
         {
             time_ = utils::GetCurrentDate();
             return ftxui::vbox({
-                viewStack_.top()->Render()  | ftxui::vscroll_indicator | ftxui::yframe | ftxui::flex ,
+                viewStack_.top()->Render() | ftxui::flex ,
                 ftxui::filler() | ftxui::flex,
                 ftxui::separatorCharacter("-") | ftxui::notflex,
                 bottom_bar_->Render() | ftxui::notflex

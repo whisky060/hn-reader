@@ -231,7 +231,7 @@ inline ftxui::Component ArticleList(
         bool old_state;
     };
 
-    return ftxui::Make<ImplArticleList>(get_articles, on_load, on_select, is_loading);
+    return ftxui::Make<ImplArticleList>(get_articles, on_load, on_select, is_loading) | ftxui::vscroll_indicator | ftxui::yframe;
 }
 
 #endif

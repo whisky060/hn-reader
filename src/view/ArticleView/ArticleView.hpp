@@ -3,6 +3,7 @@
 
 #include "ftxui/dom/elements.hpp"
 #include "model/ContentBlock.hpp"
+#include "widgets/Scroll/ScrollView.hpp"
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp> // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
@@ -10,6 +11,7 @@
 #include <ftxui/component/mouse.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/flexbox_config.hpp>
 #include <functional>
 #include <memory>
 #include <string>
@@ -18,10 +20,8 @@
 class ArticleViewImp : public ftxui::ComponentBase {
 public:
   ArticleViewImp(
-  	std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
-  	std::function<void()> exitCallback
-  )
-  {
+      std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
+      std::function<void()> exitCallback) {
 
     articleContentGetter_ = articleContentGetter;
     exitCallback_ = exitCallback;
@@ -112,16 +112,14 @@ public:
 
   bool Focusable() const override { return true; }
 
-
   bool OnEvent(ftxui::Event event) override {
 
-  		if(event == ftxui::Event::Escape)
-    	{
-     		exitCallback_();
-     		return true;
-     	}
+    if (event == ftxui::Event::Escape) {
+      exitCallback_();
+      return true;
+    }
 
-  		return ftxui::ComponentBase::OnEvent(event);
+    return ftxui::ComponentBase::OnEvent(event);
   }
 
 private:
@@ -130,12 +128,8 @@ private:
     if (content == nullptr)
       return;
 
-    articleContent_ = CreateComponentFromBlock(*content);
-  };
-
-  ftxui::Element KeepAlive(ftxui::Component component) {
-    tempComponents_.push_back(component);
-    return component->Render();
+    articleContent_ = ScrollView(CreateFromBlock(*content));
+    this->Add(articleContent_);
   };
 
   ftxui::Element CreateFromBlock(ContentBlock &block) {
@@ -185,49 +179,53 @@ private:
     default:
       break;
     }
-    return ftxui::Renderer([] { return ftxui::text("") | ftxui::notflex; });
+    return ftxui::text("");
   };
 
-  ftxui::Component VisitUL(ContentBlock &block, int depth = 0) {
+  ftxui::Element VisitUL(ContentBlock &block, int depth = 0) {
 
-    auto mainContainer = ftxui::Container::Vertical({});
+    ftxui::Elements rows;
 
     for (auto &child : block.children) {
-      auto li = VisitLI(child, depth);
-      mainContainer->Add(ftxui::Renderer([this, li, depth] {
-        return ftxui::hbox(
-            {
-            ftxui::text(" " + listDots_[depth % listDots_.size()]),
-            li->Render()
-        }
-        );
-      }));
+      rows.push_back(VisitLI(child, depth));
     }
 
-    return mainContainer;
+    return ftxui::vbox(rows);
   };
-  ftxui::Component VisitLI(ContentBlock &block, int depth = 0) {
+  ftxui::Element VisitLI(ContentBlock &block, int depth = 0) {
 
     ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
+    ftxui::Elements block_out;
+    auto flush = [&] {
+      if (inLineBuffer.empty())
+        return;
+      for (auto &e : inLineBuffer)
+        e |= ftxui::xflex_shrink;
+      block_out.push_back(hbox(
+          std::move(inLineBuffer)));
+      inLineBuffer.clear();
+    };
 
     for (auto &child : block.children) {
       if (child.type == ContentBlockType::UL) {
         auto table = VisitUL(child, depth + 1);
-        mainContainer->Add(table);
+        block_out.push_back(table);
         continue;
       }
       if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child)));
+        inLineBuffer.push_back(CreateFromBlock(child));
         continue;
       }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child)));
+      flush();
+      block_out.push_back(CreateFromBlock(child));
     }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer] { return mainContainer->Render(); });
+    flush();
+    return ftxui::flexbox(block_out, ftxui::FlexboxConfig(
+        {
+            .direction = ftxui::FlexboxConfig::Direction::Row,
+            .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+        })
+        .SetGap(1, 0));
   };
 
   bool IsInNewLine(ContentBlockType tag) {
@@ -241,352 +239,127 @@ private:
             tag == ContentBlockType::CAPTION || tag == ContentBlockType::TR);
   }
 
-  ftxui::Element VisitBR(ContentBlock &block) {
-    return return ftxui::separator();
+  ftxui::Element RenderChildren(ContentBlock &block) {
+    ftxui::Elements inline_buf;
+    ftxui::Elements block_out;
+
+    auto flush = [&] {
+      if (inline_buf.empty())
+        return;
+      for (auto &e : inline_buf)
+        e |= ftxui::xflex_shrink;
+      block_out.push_back(
+      	ftxui::flexbox(std::move(inline_buf), ftxui::FlexboxConfig({
+    		 .direction = ftxui::FlexboxConfig::Direction::Row,
+       		 .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+       }).SetGap(1,0))
+      );
+      inline_buf.clear();
+    };
+
+    for (auto &c : block.children) {
+      if (!IsInNewLine(c.type)) {
+        inline_buf.push_back(CreateFromBlock(c));
+      } else {
+        flush();
+        block_out.push_back(CreateFromBlock(c));
+      }
+    }
+    flush();
+    return vbox(std::move(block_out));
   }
+
+  ftxui::Element VisitBR(ContentBlock &block) { return ftxui::separator(); }
 
   ftxui::Element VisitHR(ContentBlock &block) {
-    return ftxui::Renderer([] { return ftxui::separatorDashed() ; });
+    return ftxui::separatorLight();
   }
 
-  ftxui::Component VisitH1(ContentBlock &block) {
-
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer] {
-      return ftxui::flexbox(
-          {ftxui::text("✺ "),
-           mainContainer->Render() | ftxui::center | ftxui::bold ,
-           ftxui::text(" ✺")},
-          ftxui::FlexboxConfig({
-
-          	.direction = ftxui::FlexboxConfig::Direction::Row,
-           	.wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-          }).SetGap(1, 0));
-    });
+  ftxui::Element VisitH1(ContentBlock &block) {
+    return ftxui::flexbox(
+        {ftxui::text("✺ "), RenderChildren(block), ftxui::text(" ✺")},
+        ftxui::FlexboxConfig(
+            {
+                .direction = ftxui::FlexboxConfig::Direction::Row,
+                .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+            })
+            .SetGap(1, 0));
   };
 
-  ftxui::Component VisitH2(ContentBlock block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-
-    return ftxui::Renderer([mainContainer] {
-      return ftxui::flexbox({ftxui::text("❊ "),
-                             mainContainer->Render() | ftxui::center ,
-                             ftxui::text(" ❊")},
-                            ftxui::FlexboxConfig({
-                            	.direction = ftxui::FlexboxConfig::Direction::Row,
-                             	.wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-                            }).SetGap(1, 0));
-    });
+  ftxui::Element VisitH2(ContentBlock block) {
+    return ftxui::flexbox(
+        {ftxui::text("❊ "), RenderChildren(block), ftxui::text(" ❊")},
+        ftxui::FlexboxConfig(
+            {
+                .direction = ftxui::FlexboxConfig::Direction::Row,
+                .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+            })
+            .SetGap(1, 0));
   };
 
-  ftxui::Component VisitH3(ContentBlock &block) {
-
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer] {
-      return ftxui::flexbox(
-          {ftxui::text("❃ "), mainContainer->Render() | ftxui::underlined },
-          ftxui::FlexboxConfig({
-
-          		.direction = ftxui::FlexboxConfig::Direction::Row,
-            	.wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-          }).SetGap(1, 0));
-    });
+  ftxui::Element VisitH3(ContentBlock &block) {
+    return ftxui::flexbox(
+        {ftxui::text("❃ "), RenderChildren(block), ftxui::text(" ❃")},
+        ftxui::FlexboxConfig(
+            {
+                .direction = ftxui::FlexboxConfig::Direction::Row,
+                .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+            })
+            .SetGap(1, 0));
   };
 
-  ftxui::Component VisitP(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
+  ftxui::Element VisitP(ContentBlock &block) { return RenderChildren(block); }
 
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer] { return mainContainer->Render() ; });
+  ftxui::Element VisitTEXT(ContentBlock &block) {
+    return ftxui::paragraph(block.text) | ftxui::notflex;
   }
 
-  ftxui::Component VisitTEXT(ContentBlock &block) {
-    return ftxui::Renderer([block] { return ftxui::paragraph(block.text); });
-  }
+  ftxui::Element VisitDIV(ContentBlock &block) { return RenderChildren(block); }
 
-  ftxui::Component VisitDIV(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer] { return mainContainer->Render(); });
-  }
-
-  ftxui::Component VisitA(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render() | ftxui::hyperlink(url);
-    });
+  ftxui::Element VisitA(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::hyperlink(block.url) | ftxui::notflex;
   };
 
-  ftxui::Component VisitTABLE(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer(
-        [mainContainer] { return mainContainer->Render() | ftxui::border; });
+  ftxui::Element VisitTABLE(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::border;
   }
 
-  ftxui::Component VisitTR(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ) | ftxui::border);
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer(
-        [mainContainer] { return mainContainer->Render() | ftxui::border; });
+  ftxui::Element VisitTR(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::border;
   }
 
-  ftxui::Component VisitPRE(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-
-    return ftxui::Renderer([mainContainer] {
-      return mainContainer->Render() | ftxui::center;
-    });
-  };
-
-  ftxui::Component VisitB(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer(
-        [mainContainer] { return mainContainer->Render() | ftxui::bold ; });
-  };
-
-  ftxui::Component VisitI(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render() | ftxui::italic;
-    });
-  };
-
-  ftxui::Component VisitBLOCKQUOTE(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-
-    return ftxui::Renderer([mainContainer] {
-      return mainContainer->Render() | ftxui::border | ftxui::center;
-    });
+  ftxui::Element VisitPRE(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::center;
   }
 
-  ftxui::Component VisitU(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render() | ftxui::underlined;
-    });
+  ftxui::Element VisitB(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::bold;
   }
 
-  ftxui::Component VisitCODE(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer([mainContainer, url = block.url] {
-      return mainContainer->Render() ;
-    });
+  ftxui::Element VisitI(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::italic;
   }
 
-  ftxui::Component VisitIMG(ContentBlock &block) {
-    return ftxui::Renderer([url = block.url] {
-      return ftxui::text("📸") | ftxui::hyperlink(url) | ftxui::notflex ;
-    });
+  ftxui::Element VisitBLOCKQUOTE(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::border | ftxui::center;
   }
 
-  ftxui::Component VisitCAPTION(ContentBlock &block) {
-    ftxui::Elements inLineBuffer;
-    auto mainContainer = ftxui::Container::Vertical({});
-
-    for (auto &child : block.children) {
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-        continue;
-      }
-      auto line = FlushBuffer(inLineBuffer);
-      mainContainer->Add(line);
-      inLineBuffer.push_back(KeepAlive(CreateComponentFromBlock(child) ));
-    }
-    auto line = FlushBuffer(inLineBuffer);
-    mainContainer->Add(line);
-    return ftxui::Renderer(
-        [mainContainer] { return mainContainer->Render() | ftxui::center; });
+  ftxui::Element VisitU(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::underlined;
   }
 
-  ftxui::Component FlushBuffer(ftxui::Elements &buffer) {
+  ftxui::Element VisitCODE(ContentBlock &block) {
+    return RenderChildren(block);
+  }
 
+  ftxui::Element VisitIMG(ContentBlock &block) {
+    return ftxui::text("📸") | ftxui::hyperlink(block.url) | ftxui::notflex;
+  }
 
-    for (auto &element : buffer) {
-      element |= ftxui::xflex_shrink;
-    }
+  ftxui::Element VisitCAPTION(ContentBlock &block) {
+    return RenderChildren(block);
+  }
 
-    auto box = ftxui::hbox(buffer) ;
-
-    buffer.clear();
-    return ftxui::Renderer([box] { return box; });
-  };
   std::function<std::shared_ptr<ContentBlock>()> articleContentGetter_;
   std::function<void()> exitCallback_;
   ftxui::Component loadingSpinner_;
@@ -595,11 +368,9 @@ private:
   std::vector<ftxui::Component> tempComponents_;
 };
 
-inline ftxui::Component ArticleView(
-	std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
-	std::function<void()> exitCallback
-)
-{
+inline ftxui::Component
+ArticleView(std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
+            std::function<void()> exitCallback) {
   return ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback);
 }
 

@@ -72,7 +72,7 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::I;
     if(tag == "U" || tag == "UNDERLINE")
         return ContentBlockType::U;
-    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER" || tag == "SPAN")
+    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER")
         return ContentBlockType::DIV;
     if(tag == "TR")
         return ContentBlockType::TR;
