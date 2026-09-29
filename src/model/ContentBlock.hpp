@@ -27,7 +27,8 @@ enum ContentBlockType {
     IMG,
     LI,
     UL,
-    CAPTION
+    CAPTION,
+    SPAN
 };
 
 struct ContentBlock

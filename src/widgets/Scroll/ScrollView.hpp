@@ -91,10 +91,10 @@ inline ftxui::Component ScrollView(ftxui::Element content)
                  return true;
              };
 
-             if (ev == ftxui::Event::ArrowDown) return update(0.05f);
-             if (ev == ftxui::Event::k) return update(0.05f);
-             if (ev == ftxui::Event::ArrowUp)   return update(-0.05f);
-             if (ev == ftxui::Event::j) return update(-0.05f);
+             if (ev == ftxui::Event::ArrowDown) return update(0.03f);
+             if (ev == ftxui::Event::k) return update(0.03f);
+             if (ev == ftxui::Event::ArrowUp)   return update(-0.03f);
+             if (ev == ftxui::Event::j) return update(-0.03f);
              if (ev == ftxui::Event::PageDown)  return update(0.30f);
              if (ev == ftxui::Event::PageUp)    return update(-0.30f);
              if (ev == ftxui::Event::Home) {
@@ -109,8 +109,8 @@ inline ftxui::Component ScrollView(ftxui::Element content)
              // wheel
              if (ev.is_mouse()) {
                  auto m = ev.mouse();
-                 if (m.button == ftxui::Mouse::WheelUp)   return update(-0.05f);
-                 if (m.button == ftxui::Mouse::WheelDown) return update(0.05f);
+                 if (m.button == ftxui::Mouse::WheelUp)   return update(-0.005f);
+                 if (m.button == ftxui::Mouse::WheelDown) return update(0.005f);
              }
 
              return false;

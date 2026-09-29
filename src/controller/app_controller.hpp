@@ -28,7 +28,7 @@ public:
 
 private:
     void FetchArticles(){ model_->FetchTopStories(); };
-
+    void DrainException();
     Component curr_view;
     std::shared_ptr<AppModel> model_;
     std::shared_ptr<AbstractTemplate> template_;

@@ -50,7 +50,7 @@ private:
     lxb_dom_node_t *GetParent(lxb_dom_node_t *node);
     std::vector<lxb_dom_node_t *> GetChildElements(lxb_dom_node_t *node);
     std::vector<lxb_dom_node_t *> GetNodes(lxb_dom_node_t *root);
-    std::string GetNodeTextContent(lxb_dom_node_t *node);
+    std::string GetNodeTextContent(lxb_dom_node_t *node, bool trim = false);
     bool IsElementNode(lxb_dom_node_t *node);
     bool IsTextNode(lxb_dom_node_t *node);
     bool IsValidByLine(lxb_dom_node_t *node, std::string &matchString);

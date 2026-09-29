@@ -1,6 +1,7 @@
 #include "app_model.hpp"
 #include "lexbor/dom/interface.h"
 #include "model/ArticleScraper.hpp"
+#include <exception>
 #include <iostream>
 #include <thread>
 
@@ -78,9 +79,16 @@ void AppModel::GetArticle(std::string articleUrl)
 
    articleContent_.store(nullptr);
    std::thread([self = shared_from_this(), articleUrl]()
-   {
-      auto article = self->client->FetchArticle(articleUrl);
-      self->articleContent_.store(std::make_shared<ContentBlock>((*self->scraper_)(article)));
+   {	try
+   		{
+			auto article = self->client->FetchArticle(articleUrl);
+    		self->articleContent_.store(std::make_shared<ContentBlock>((*self->scraper_)(article)));
+   		} catch (...)
+     	{
+      		self->SetPendingException(std::current_exception());
+        	self->articleContent_.store(nullptr);
+     	}
+
    }).detach();
 }
 

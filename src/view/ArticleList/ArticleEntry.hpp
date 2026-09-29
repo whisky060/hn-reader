@@ -46,10 +46,6 @@ public:
     bool OnEvent(ftxui::Event event) override
     {
 
-    	if(!Focused())
-    	{
-    		return ftxui::ComponentBase::OnEvent(event);
-    	}
 
     	// fired when enter is pressed
         if(event == ftxui::Event::Return)
@@ -69,6 +65,12 @@ public:
                 }
             }
         }
+
+       	if(!Focused())
+       	{
+       		return ftxui::ComponentBase::OnEvent(event);
+       	}
+
 
 
         return ftxui::ComponentBase::OnEvent(event);

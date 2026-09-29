@@ -84,6 +84,8 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::BR;
     if (tag == "HR")
         return ContentBlockType::HR;
+    if(tag == "SPAN")
+        return ContentBlockType::SPAN;
 
     return ContentBlockType::TEXT;
 
@@ -153,7 +155,7 @@ void ArticleScraper::CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBloc
          		blocks.push_back({type, "", GetAttribute(node, "src"), children});
          		break;
         	case ContentBlockType::TEXT:
-         		blocks.push_back({type, GetNodeTextContent(node), "", children});
+         		blocks.push_back({type, GetNodeTextContent(node, true), "", children});
            		break;
          	case ContentBlockType::BR:
          	case ContentBlockType::HR:
@@ -1681,7 +1683,7 @@ std::vector<lxb_dom_node_t *> ArticleScraper::GetChildElements(lxb_dom_node_t *n
   return elements;
 }
 
-std::string ArticleScraper::GetNodeTextContent(lxb_dom_node_t *node) {
+std::string ArticleScraper::GetNodeTextContent(lxb_dom_node_t *node, bool trim) {
   size_t len = 0;
   lxb_char_t *text = lxb_dom_node_text_content(node, &len);
   if(text == nullptr)
@@ -1689,6 +1691,10 @@ std::string ArticleScraper::GetNodeTextContent(lxb_dom_node_t *node) {
   std::string result(reinterpret_cast<const char *>(text), len);
 
   lxb_dom_document_destroy_text(node->owner_document, text);
+
+  if (trim) {
+    Trim(result);
+  }
 
   return result;
 }

@@ -176,10 +176,17 @@ private:
       return VisitIMG(block);
     case ContentBlockType::CAPTION:
       return VisitCAPTION(block);
+    case ContentBlockType::SPAN:
+      return VisitSPAN(block);
     default:
       break;
     }
     return ftxui::text("");
+  };
+
+
+  ftxui::Element VisitSPAN(ContentBlock &block) {
+    return RenderChildren(block);
   };
 
   ftxui::Element VisitUL(ContentBlock &block, int depth = 0) {
@@ -201,8 +208,12 @@ private:
         return;
       for (auto &e : inLineBuffer)
         e |= ftxui::xflex_shrink;
-      block_out.push_back(hbox(
-          std::move(inLineBuffer)));
+      block_out.push_back(ftxui::flexbox(inLineBuffer, ftxui::FlexboxConfig(
+          {
+              .direction = ftxui::FlexboxConfig::Direction::Row,
+              .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
+          })
+          .SetGap(1, 0)));
       inLineBuffer.clear();
     };
 
@@ -233,7 +244,7 @@ private:
             tag == ContentBlockType::TABLE || tag == ContentBlockType::H1 ||
             tag == ContentBlockType::H2 || tag == ContentBlockType::H3 ||
             tag == ContentBlockType::BR || tag == ContentBlockType::HR ||
-            tag == ContentBlockType::CODE || tag == ContentBlockType::UL ||
+            tag == ContentBlockType::UL ||
             tag == ContentBlockType::DIV || tag == ContentBlockType::PRE ||
             tag == ContentBlockType::BLOCKQUOTE ||
             tag == ContentBlockType::CAPTION || tag == ContentBlockType::TR);
@@ -269,7 +280,7 @@ private:
     return vbox(std::move(block_out));
   }
 
-  ftxui::Element VisitBR(ContentBlock &block) { return ftxui::separator(); }
+  ftxui::Element VisitBR(ContentBlock &block) { return ftxui::separatorEmpty(); }
 
   ftxui::Element VisitHR(ContentBlock &block) {
     return ftxui::separatorLight();
@@ -329,7 +340,7 @@ private:
   }
 
   ftxui::Element VisitPRE(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::center;
+    return RenderChildren(block);
   }
 
   ftxui::Element VisitB(ContentBlock &block) {

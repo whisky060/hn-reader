@@ -2,6 +2,7 @@
 #define BASETEMPLATE_H
 
 
+#include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
@@ -19,6 +20,18 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
     public:
         ImplBaseTemplate(ftxui::Component main_view) : AbstractTemplate()
         {
+
+            mainContainer = ftxui::Container::Stacked({});
+            mainContainer->Add(ftxui::Renderer([&]
+                                   {
+                                  		return ftxui::vbox({
+                                       	viewStack_.top()->Render() | ftxui::flex ,
+                                        ftxui::filler() | ftxui::flex,
+                                        ftxui::separatorCharacter("-") | ftxui::notflex,
+                                        bottom_bar_->Render() | ftxui::notflex
+                                   		});
+                                   }
+            				));
 
             viewStack_.push(main_view);
             time_ = utils::GetCurrentDate();
@@ -49,12 +62,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
         ftxui::Element OnRender() override
         {
             time_ = utils::GetCurrentDate();
-            return ftxui::vbox({
-                viewStack_.top()->Render() | ftxui::flex ,
-                ftxui::filler() | ftxui::flex,
-                ftxui::separatorCharacter("-") | ftxui::notflex,
-                bottom_bar_->Render() | ftxui::notflex
-            });
+            return mainContainer->Render();
         }
 
         void ChangeView(ftxui::Component new_view) override
@@ -73,17 +81,32 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
                 return;
             auto oldView = viewStack_.top();
             viewStack_.pop();
-            if (!viewStack_.empty())
-            {
-            	auto top = viewStack_.top();
-            	this->Add(top);
-            	top->TakeFocus();
-            }
             oldView->Detach();
+
+            if (viewStack_.empty())
+            {
+            	return;
+            }
+           	auto top = viewStack_.top();
+           	this->Add(top);
+           	top->TakeFocus();
         }
 
         void OpenCtrlP()
         {
+        }
+
+        void PushAlert(ftxui::Component alert) override
+        {
+            mainContainer->Add(alert | ftxui::center);
+            alert->TakeFocus();
+        }
+
+        void CloseAlert() override
+        {
+        	auto alert = mainContainer->ActiveChild();
+        	if (alert)
+        		alert->Detach();
         }
 
         bool OnEvent(ftxui::Event event) override
@@ -94,9 +117,16 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
                 return true;
             }
 
+            if (event == ftxui::Event::Escape)
+            {
+                CloseAlert();
+                return true;
+            }
+
 
              if(ftxui::ComponentBase::OnEvent(event))
              {
+
                  return true;
              }
 
@@ -110,6 +140,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
         std::string time_;
         std::stack<ftxui::Component> viewStack_;
         ftxui::Component bottom_bar_;
+        ftxui::Component mainContainer;
     };
 
     return std::shared_ptr<AbstractTemplate>(new ImplBaseTemplate(main_view));
