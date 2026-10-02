@@ -16,16 +16,19 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "utility/utility.h"
 
 class ArticleViewImp : public ftxui::ComponentBase {
 public:
   ArticleViewImp(
       std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
-      std::function<void()> exitCallback) {
+      std::function<void()> exitCallback,
+      std::string articleUrl) {
 
     articleContentGetter_ = articleContentGetter;
     exitCallback_ = exitCallback;
     articleContent_ = nullptr;
+    articleUrl_ = articleUrl;
     std::string first_pattern[] = {
 
         "█   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
@@ -113,6 +116,11 @@ public:
   bool Focusable() const override { return true; }
 
   bool OnEvent(ftxui::Event event) override {
+
+    if(event == ftxui::Event::CtrlO) {
+       utils::OpenUrl(articleUrl_);
+       return true;
+    }
 
     if (event == ftxui::Event::Escape) {
       exitCallback_();
@@ -377,12 +385,14 @@ private:
   ftxui::Component articleContent_;
   std::vector<std::string> listDots_ = {"•", "◦", "▪"};
   std::vector<ftxui::Component> tempComponents_;
+  std::string articleUrl_;
 };
 
 inline ftxui::Component
 ArticleView(std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
-            std::function<void()> exitCallback) {
-  return ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback);
+            std::function<void()> exitCallback,
+            std::string articleUrl) {
+  return ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback, articleUrl);
 }
 
 #endif

@@ -7,10 +7,11 @@
 #include <thread>
 #include <iostream>
 #include "controller/app_controller.hpp"
-#include "model/app_model.hpp" 
+#include "model/app_model.hpp"
 
 int main() {
- 
+  // https://www.eff.org/deeplinks/2026/10/court-agrees-eff-utahs-vpn-law-demands-technical-impossibility
+  // need to test
  try {
 
     App app = App::Fullscreen();
@@ -23,15 +24,15 @@ int main() {
       loop.RunOnce();
       std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 60));
     }
-    
-    
 
-    
-    
+
+
+
+
   } catch (const std::exception& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
-  
+
   return EXIT_SUCCESS;
 }

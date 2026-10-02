@@ -7,6 +7,7 @@
 #include <ftxui/component/event.hpp>
 #include "view/template/Template.hpp"
 #include "model/app_model.hpp"
+#include "view/AelrtView/AlertView.hpp"
 #include <memory>
 
 /*

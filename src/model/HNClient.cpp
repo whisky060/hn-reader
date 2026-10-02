@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <format>
+#include "exeptions/scraping_exception.hpp"
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -141,32 +142,32 @@ std::string HNClient::FetchArticle(std::string article_url)
 
     if (handle == nullptr)
         // TODO make better error handling
-        throw std::runtime_error("ERROR: during the initialization of curl");
+        throw ScrapingException("ERROR: during the initialization of curl", article_url);
 
     CURLcode result;
 
     result = curl_easy_setopt(handle, CURLOPT_URL, article_url.c_str());
     if (result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_URL");
+        throw ScrapingException("error during the initialization od CURLOPT_URL", article_url);
     }
 
     result = curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, WriteCallback);
     if (result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_WRITEFUNCTION");
+        throw ScrapingException("error during the initialization od CURLOPT_WRITEFUNCTION", article_url);
     }
 
     curl_easy_setopt(handle, CURLOPT_WRITEDATA, &response);
     if (result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_WRITEDATA");
+        throw ScrapingException("error during the initialization od CURLOPT_WRITEDATA", article_url);
     }
 
 
@@ -175,7 +176,7 @@ std::string HNClient::FetchArticle(std::string article_url)
     {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_FOLLOWLOCATION");
+        throw ScrapingException("error during the initialization od CURLOPT_FOLLOWLOCATION", article_url);
     }
 
     curl_easy_setopt(handle, CURLOPT_TIMEOUT, 10L);
@@ -183,48 +184,48 @@ std::string HNClient::FetchArticle(std::string article_url)
     {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_TIMEOUT");
+        throw ScrapingException("error during the initialization od CURLOPT_TIMEOUT", article_url);
     }
 
     curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, ""); // auto gzip/deflate
     if (result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_ACCEPTS_ENCODING");
+        throw ScrapingException("error during the initialization od CURLOPT_ACCEPTS_ENCODING", article_url);
     }
 
     curl_easy_setopt(handle, CURLOPT_USERAGENT,
                      "Mozilla/5.0 (compatible; hn-tui-reader/1.0)"); // many sites 403 without a UA
     if (result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
         curl_easy_cleanup(handle);
-        throw std::runtime_error("error during the initialization od CURLOPT_USERAGENT");
+        throw ScrapingException("error during the initialization od CURLOPT_USERAGENT", article_url);
     }
 
     result = curl_easy_perform(handle);
     if(result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
-        curl_easy_cleanup(handle);    
-        throw std::runtime_error("error during the initialization od CURLOPT_URL");
+        curl_easy_cleanup(handle);
+        throw ScrapingException("error during the initialization od CURLOPT_URL", article_url);
     }
 
     result = curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &http_code);
     if(result != CURLE_OK)
-    {   
+    {
         // TODO make better error handling
-        curl_easy_cleanup(handle);    
-        throw std::runtime_error("error in retrieving the error code");
+        curl_easy_cleanup(handle);
+        throw ScrapingException("error in retrieving the error code",article_url);
     }
 
     if(http_code > 400)
     {
         curl_easy_cleanup(handle);
-        throw ScrapingException("error code:"+ std::to_string(http_code)+" during website scraping");
+        throw ScrapingException("error code:"+ std::to_string(http_code)+" during website scraping", article_url);
     }
-    
+
     curl_easy_cleanup(handle);
 
     return response;
