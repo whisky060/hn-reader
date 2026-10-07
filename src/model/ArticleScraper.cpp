@@ -72,11 +72,15 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::I;
     if(tag == "U" || tag == "UNDERLINE")
         return ContentBlockType::U;
-    if(tag == "DIV" || tag == "ARTICLE" || tag == "SECTION" || tag == "ASIDE" || tag == "MAIN" || tag == "HEADER" || tag == "FOOTER")
+    if(tag == "DIV" || tag == "ARTICLE" ||
+       tag == "SECTION" || tag == "ASIDE" ||
+       tag == "MAIN" || tag == "HEADER" ||
+       tag == "FOOTER" || tag == "FIGURE" ||
+       tag == "PICTURE" || tag == "SOURCE")
         return ContentBlockType::DIV;
     if(tag == "TR")
         return ContentBlockType::TR;
-    if(tag == "TD")
+    if(tag == "TD" || tag == "TH")
         return ContentBlockType::TD;
     if(tag == "CAPTION" || tag == "FIGCAPTION")
         return ContentBlockType::CAPTION;
@@ -121,7 +125,8 @@ bool ArticleScraper::IsContainerNode(ContentBlockType type)
 		type == ContentBlockType::CAPTION ||
 		type == ContentBlockType::A ||
 		type == ContentBlockType::P ||
-		type == ContentBlockType::BLOCKQUOTE
+		type == ContentBlockType::BLOCKQUOTE ||
+		type == ContentBlockType::SPAN
 	);
 }
 
@@ -213,7 +218,7 @@ void ArticleScraper::CleanClasses(lxb_dom_node_t *node) {
         filteredClassName += t;
     }
 
-    if (!className.empty()) {
+    if (!filteredClassName.empty()) {
         SetAttribute(node, "class", filteredClassName);
     } else {
         RemoveAttribute(node, "class");
@@ -1392,7 +1397,7 @@ void ArticleScraper::ReplaceBrs(lxb_dom_node_t *element) {
     // If we find a <br> chain, remove the <br>s until we hit another node
     // or non-whitespace. This leaves behind the first <br> in the chain
     // (which will be replaced with a <p> later).
-    while (next == GetNextNode(next) && GetTagName(next) == "BR") {
+    while ((next = GetNextNode(next)) && GetTagName(next) == "BR") {
       replaced = true;
       auto brSibling = GetNextSibling(next);
       RemoveNode(next);
@@ -1925,7 +1930,7 @@ lxb_dom_node_t *ArticleScraper::GetNextNode(lxb_dom_node_t *node, bool ignoreSel
   // (because this is depth-first traversal, we will have already
   // seen the parent nodes themselves).
   do {
-    node = node->parent;
+    node = GetParent(node);
   } while (node && !GetNextElementSibling(node));
 
   return node ? GetNextElementSibling(node) : nullptr;
@@ -2327,13 +2332,13 @@ bool ArticleScraper::IsProbablyVisible(lxb_dom_node_t *node) {
     auto visibility = GetStyleAttribute(node, "visibility");
 
     return (
-        display.empty() || display != "none" &&
-        visibility.empty() || visibility != "hidden" &&
+        (display.empty() || display != "none") &&
+        (visibility.empty() || visibility != "hidden") &&
         !HasAttribute(node, "hidden") &&
         (
             !HasAttribute(node, "aria-hidden") ||
             GetAttribute(node, "aria-hidden") != "true" ||
-            GetNodeClass(node).find("fallback-image") == std::string::npos
+            GetNodeClass(node).find("fallback-image") != std::string::npos
         )
     );
     // old function definition

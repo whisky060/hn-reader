@@ -101,15 +101,15 @@ void AppModel::LoadMoreStories()
    std::thread([self = shared_from_this()]()
    {
       try{
-         for(int i = 0; i < self->fetch_limit; i++)
-         {
-            auto combined = std::make_shared<std::vector<StoryDataBlock>>(*self->articles_list_.load());
+          auto combined = std::make_shared<std::vector<StoryDataBlock>>(*self->articles_list_.load());
+          for(int i = 0; i < self->fetch_limit; i++)
+          {
             combined->push_back(self->FetchStory(self->top_stories_.SafeNext()));
-            self->articles_list_.store(combined);
-         }
+          }
+          self->articles_list_.store(combined);
       }
-      catch(const std::exception& e){
-         std::cerr << "Error: " << e.what() << std::endl;
+      catch(...){
+         self->is_loading_.store(false);
       }
 
       self->is_loading_.store(false);

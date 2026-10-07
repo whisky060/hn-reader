@@ -127,8 +127,7 @@ inline ftxui::Component ArticleList(
                 "HN READE▓",
             };
 
-            spinner_ = Spinner(pattern, 1000ms);
-            this->Add(spinner_);
+            spinner_ = Spinner(pattern, 1000ms) | ftxui::center;
 
             old_state = false;
             for (auto &article : *articles_)
@@ -159,7 +158,7 @@ inline ftxui::Component ArticleList(
         {
             bool loading = is_loading_();
 
-            if (entries_.empty() && loading)
+            if (list_->ChildCount() < 2 && loading)
             {
                 old_state = loading;
                 return first_load_spinner_->Render() | ftxui::center;
@@ -172,10 +171,7 @@ inline ftxui::Component ArticleList(
 
             if (loading && !old_state)
             {
-                load_more_button_->Detach();
-                int indx = entries_.size()-1;
-                list_->ChildAt(indx)->TakeFocus();
-                list_->Add(spinner_ | ftxui::center);
+              AddSpinner();
             }
 
             old_state = loading;
@@ -202,20 +198,25 @@ inline ftxui::Component ArticleList(
             if (next.get() == articles_.get())
                 return;
 
+            int indx = articles_->size();
             articles_ = next;
-            list_->Detach();
-            int indx = entries_.size();
-            entries_.clear();
-            for (auto &article : *articles_)
+            for (int i = indx; i < articles_->size(); i++)
             {
-                entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
+                auto entry = ftxui::Make<ArticleEntry>(articles_->at(i), on_select_);
+                list_->Add(entry);
             }
-            list_ = ftxui::Container::Vertical(entries_);
+
+            spinner_->Detach();
             if (articles_->size() < 500)
                 list_->Add(load_more_button_);
+        }
 
-            this->Add(list_);
-            list_->ChildAt(indx)->TakeFocus();
+        void AddSpinner()
+        {
+          load_more_button_->Detach();
+          auto index = list_->ChildCount() - 1;
+          list_->Add(spinner_);
+          list_->ChildAt(index)->TakeFocus();
         }
 
         ftxui::Component load_more_button_;

@@ -50,7 +50,7 @@ namespace utils {
           std::string command = "open " + url;
           std::system(command.c_str());
       #elif defined(__linux__)
-          std::string command = "xdg-open " + url;
+        std::string command = "xdg-open " + url + " &";
           std::system(command.c_str());
       #else
           std::cerr << "Unsupported operating system." << std::endl;

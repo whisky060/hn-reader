@@ -166,6 +166,8 @@ private:
       return VisitTABLE(block);
     case ContentBlockType::TR:
       return VisitTR(block);
+    case ContentBlockType::TD:
+      return VisitTD(block);
     case ContentBlockType::PRE:
       return VisitPRE(block);
     case ContentBlockType::B:
@@ -192,6 +194,10 @@ private:
     return ftxui::text("");
   };
 
+
+  ftxui::Element VisitTD(ContentBlock &block) {
+    return RenderChildren(block) | ftxui::borderLight;
+  };
 
   ftxui::Element VisitSPAN(ContentBlock &block) {
     return RenderChildren(block);

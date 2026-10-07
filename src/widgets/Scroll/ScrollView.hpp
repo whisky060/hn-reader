@@ -3,7 +3,7 @@
 
 /*
  *  This code is hugely based on the https://github.com/zvasilev/MarkdownFTXUI implementation
- */
+*/
 
 #include <ftxui/component/app.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -74,13 +74,13 @@ inline ftxui::Component ScrollView(ftxui::Element content)
 
 	};
 
-	static std::shared_ptr<ScrollState> state = std::make_shared<ScrollState>();
+	std::shared_ptr<ScrollState> state = std::make_shared<ScrollState>();
 	ftxui::Element frame = std::make_shared<ScrollFrame>(content, state);
 	auto component = ftxui::CatchEvent(
-    ftxui::Renderer([&, frame] {
+    ftxui::Renderer([frame, state] {
         	return frame;
     	}),
-    	[&](ftxui::Event ev) {
+    	[state](ftxui::Event ev) {
 
 
              // easiest: get state from a static or capture
