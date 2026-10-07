@@ -6,7 +6,9 @@
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/event.hpp>
+#include <memory>
 
+#include "view/BaseView.hpp"
 
 /*
     returns a template made of: a bottom bar an at the center a view
@@ -21,10 +23,13 @@ class AbstractTemplate : public ftxui::ComponentBase
     public:
         AbstractTemplate() = default;
         virtual ~AbstractTemplate() = default;
-        virtual void ChangeView(ftxui::Component new_view) = 0;
+        virtual void ChangeView(std::shared_ptr<BaseView> new_view) = 0;
         virtual void PushAlert(ftxui::Component alert) = 0;
         virtual void CloseAlert() = 0;
         virtual void PopView() = 0;
+        // Exposes the currently visible view so chrome (title / bottom bar)
+        // can be derived from it. Returns nullptr when stack is empty.
+        virtual std::shared_ptr<BaseView> ActiveView() = 0;
 
 
     private:

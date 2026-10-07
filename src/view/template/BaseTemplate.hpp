@@ -9,38 +9,49 @@
 #include <ftxui/component/event.hpp>
 #include <memory>
 #include <stack>
+#include <vector>
 #include "utility/utility.h"
 #include "view/template/Template.hpp"
+#include "view/BaseView.hpp"
 
-inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view)
+inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> main_view)
 {
 
     class ImplBaseTemplate : public AbstractTemplate
     {
     public:
-        ImplBaseTemplate(ftxui::Component main_view) : AbstractTemplate()
+        ImplBaseTemplate(std::shared_ptr<BaseView> main_view) : AbstractTemplate()
         {
 
             alertOpen_ = false;
             alertContainer_ = ftxui::Container::Vertical({});
             viewStack_.push(main_view);
 
-            time_ = utils::GetCurrentDate();
-            auto button_options = ftxui::ButtonOption::Simple();
-            button_options.transform = [](const ftxui::EntryState& state)
-            {
-                auto content = ftxui::text(state.label);
-                if (state.focused)
-                {
-                    return content;
-                }
-                return content | ftxui::bgcolor(ftxui::Color::Black);
-            };
-
-            ftxui::Component button = ftxui::Button("ctrl+p", [this]()
-                                      { this->OpenCtrlP(); }, button_options);
-            bottom_bar_ = ftxui::Renderer([button, this]
-                                   { return ftxui::hbox({button->Render() | ftxui::notflex,
+            time_ = TrimNewline(utils::GetCurrentDate());
+            // Bottom bar is re-rendered every frame from ActiveView()->GetShortcuts(),
+            // so any view pushed via ChangeView automatically updates the bar.
+            // Rendered as plain text chips (non-focusable) to avoid stealing
+            // keyboard focus from the active view.
+            bottom_bar_ = ftxui::Renderer([this]
+                                   {
+                                        ftxui::Elements chips;
+                                        auto active = ActiveView();
+                                        if (active)
+                                        {
+                                            bool first = true;
+                                            for (const auto& sc : active->GetShortcuts())
+                                            {
+                                                if (!first)
+                                                    chips.push_back(ftxui::text("  "));
+                                                  chips.push_back(ftxui::hbox({
+                                                    ftxui::text(sc.key+" : "),
+                                                    ftxui::text(" " + sc.label),
+                                                }));
+                                                first = false;
+                                            }
+                                        }
+                                        auto left = ftxui::hbox(std::move(chips));
+                                        return ftxui::hbox({std::move(left) | ftxui::notflex,
                                                         ftxui::filler(),
                                                         ftxui::text(time_) | ftxui::notflex
                                       }) | ftxui::notflex;
@@ -48,7 +59,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
             mainView_ = ftxui::Renderer([&]
                                    {
                                   		return ftxui::vbox({
-                                       	viewStack_.top()->Render() | ftxui::flex ,
+                                       	ActiveRender() | ftxui::flex ,
                                         ftxui::filler() | ftxui::flex,
                                         ftxui::separatorCharacter("-") | ftxui::notflex,
                                         bottom_bar_->Render() | ftxui::notflex
@@ -67,18 +78,25 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
 
         ftxui::Element OnRender() override
         {
-            time_ = utils::GetCurrentDate();
+            time_ = TrimNewline(utils::GetCurrentDate());
             return mainContainer->Render();
         }
 
-        void ChangeView(ftxui::Component new_view) override
+        void ChangeView(std::shared_ptr<BaseView> new_view) override
         {
-        	auto top = viewStack_.top();
+        	auto top = ActiveView();
         	if (top)
         		top->Detach();
             viewStack_.push(new_view);
             this->Add(viewStack_.top());
             viewStack_.top()->TakeFocus();
+        }
+
+        std::shared_ptr<BaseView> ActiveView() override
+        {
+            if (viewStack_.empty())
+                return nullptr;
+            return viewStack_.top();
         }
 
         void PopView() override
@@ -144,8 +162,23 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(ftxui::Component main_view
 
 
     private:
+        static std::string TrimNewline(std::string s)
+        {
+            while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
+                s.pop_back();
+            return s;
+        }
+
+        ftxui::Element ActiveRender()
+        {
+            auto active = ActiveView();
+            if (!active)
+                return ftxui::text("no view") | ftxui::center;
+            return active->Render();
+        }
+
         std::string time_;
-        std::stack<ftxui::Component> viewStack_;
+        std::stack<std::shared_ptr<BaseView>> viewStack_;
         ftxui::Component bottom_bar_;
         ftxui::Component mainContainer;
         ftxui::Component alertContainer_;

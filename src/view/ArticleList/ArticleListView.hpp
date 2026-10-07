@@ -6,13 +6,16 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/mouse.hpp>
+#include <memory>
 #include <string>
+#include <vector>
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
+#include "view/BaseView.hpp"
 #include "widgets/Spinner/spinner.hpp"
 
-inline ftxui::Component ArticleList(
+inline std::shared_ptr<BaseView> ArticleList(
 							std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
                             std::function<void(std::string)> on_select,
                             std::function<void()> on_load,
@@ -21,13 +24,13 @@ inline ftxui::Component ArticleList(
 
 {
 
-    class ImplArticleList : public ftxui::ComponentBase
+    class ImplArticleList : public BaseView
     {
     public:
         ImplArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
                         std::function<void()> on_load,
                         std::function<void(std::string)> on_select,
-                        std::function<bool()> is_loading) : ftxui::ComponentBase()
+                        std::function<bool()> is_loading) : BaseView()
         {
             get_articles_ = get_articles;
             articles_ = get_articles_();
@@ -154,6 +157,15 @@ inline ftxui::Component ArticleList(
             list_->Add(load_more_button_);
         }
 
+        std::string GetTitle() const override { return "Top Stories"; }
+
+        std::vector<Shortcut> GetShortcuts() const override {
+            return {
+                {"Enter", "open"},
+                {"Up/Down", "navigate"},
+            };
+        }
+
         ftxui::Element OnRender() override
         {
             bool loading = is_loading_();
@@ -176,7 +188,7 @@ inline ftxui::Component ArticleList(
 
             old_state = loading;
 
-            return list_->Render();
+            return list_->Render() | ftxui::vscroll_indicator | ftxui::yframe;
         }
 
 
@@ -232,7 +244,8 @@ inline ftxui::Component ArticleList(
         bool old_state;
     };
 
-    return ftxui::Make<ImplArticleList>(get_articles, on_load, on_select, is_loading) | ftxui::vscroll_indicator | ftxui::yframe;
+    return std::static_pointer_cast<BaseView>(
+        ftxui::Make<ImplArticleList>(get_articles, on_load, on_select, is_loading));
 }
 
 #endif

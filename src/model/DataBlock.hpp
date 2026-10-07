@@ -46,7 +46,7 @@ struct StoryDataBlock
                          title_(title),
                          url_(url)
         {
-                comments_ = move(comments);
+                comments_ = std::move(comments);
         }
 };
 
@@ -77,7 +77,7 @@ struct CommentDataBlock
                         text_(text),
                         time_(time)
         {
-                comments_ = move(comments);
+                comments_ = std::move(comments);
         }
 
 };

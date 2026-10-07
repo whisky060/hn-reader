@@ -17,8 +17,9 @@
 #include <string>
 #include <vector>
 #include "utility/utility.h"
+#include "view/BaseView.hpp"
 
-class ArticleViewImp : public ftxui::ComponentBase {
+class ArticleViewImp : public BaseView {
 public:
   ArticleViewImp(
       std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
@@ -102,6 +103,19 @@ public:
     this->Add(loadingSpinner_);
   };
   ~ArticleViewImp() = default;
+
+  std::string GetTitle() const override {
+    return articleUrl_.empty() ? "Article" : articleUrl_;
+  }
+
+  std::vector<Shortcut> GetShortcuts() const override {
+    return {
+        {"Esc", "back"},
+        {"Ctrl-O", "browser"},
+        {"Up/Down j/k", "scroll"},
+        {"PgUp/PgDn", "page"},
+    };
+  }
 
   ftxui::Element OnRender() override {
     if (articleContent_ == nullptr && articleContentGetter_() == nullptr)
@@ -394,11 +408,12 @@ private:
   std::string articleUrl_;
 };
 
-inline ftxui::Component
+inline std::shared_ptr<BaseView>
 ArticleView(std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
             std::function<void()> exitCallback,
             std::string articleUrl) {
-  return ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback, articleUrl);
+  return std::static_pointer_cast<BaseView>(
+      ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback, articleUrl));
 }
 
 #endif

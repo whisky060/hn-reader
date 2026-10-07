@@ -1,6 +1,5 @@
 #ifndef ARTICLEENTRY_H
 #define ARTICLEENTRY_H
-#include <filesystem>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>

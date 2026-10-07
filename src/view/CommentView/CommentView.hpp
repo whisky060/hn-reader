@@ -1,0 +1,49 @@
+#ifndef COMMENTVIEW_HPP
+#define COMMENTVIEW_HPP
+
+
+#include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
+#include <ftxui/component/component_base.hpp> // for Component, ComponentBase
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/component/mouse.hpp>
+#include <functional>
+#include <memory>
+#include "view/BaseView.hpp"
+#include "view/template/BaseView.hpp"
+
+
+inline std::shared_ptr<BaseView> CommentView(
+  std::function<void()> exitCallback
+) {
+    class CommentViewImpl : public BaseView {
+    public:
+        CommentViewImpl(std::function<void()> exitCallback) : exitCallback_(exitCallback), BaseView() {}
+        bool OnEvent(ftxui::Event event) override {
+
+          if (event == ftxui::Event::Escape) {
+            exitCallback_();
+            return true;
+          }
+
+          return ftxui::ComponentBase::OnEvent(event);
+        }
+
+        std::string GetTitle() const override {
+            return "";
+        }
+
+        std::vector<Shortcut> GetShortcuts() const override {
+
+            return {{"Escape", "Exit"}};
+        }
+
+    private:
+        std::function<void()> exitCallback_;
+    };
+    return std::shared_ptr<BaseView>(new CommentViewImpl(exitCallback));
+}
+
+
+#endif
