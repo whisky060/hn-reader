@@ -1,12 +1,14 @@
 #include "app_model.hpp"
-#include "lexbor/dom/interface.h"
+#include "concurrency/ThreadPool.hpp"
 #include "model/ArticleScraper.hpp"
 #include <exception>
-#include <iostream>
+#include <memory>
 #include <thread>
+#include <vector>
 
 AppModel::AppModel()
 {
+   pool = std::make_shared<ThreadPool>();
    articles_list_.store(std::make_shared<std::vector<StoryDataBlock>>());
    articleContent_ = nullptr;
    comments_ = std::make_shared<std::vector<CommentDataBlock>>();
@@ -15,6 +17,8 @@ AppModel::AppModel()
    top_stories_ = IndexTracker(tmp);
    scraper_ = std::make_unique<ArticleScraper>();
 }
+
+
 
 std::vector<ID> AppModel::FetchTopStories()
 {

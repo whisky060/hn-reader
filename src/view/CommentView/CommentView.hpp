@@ -15,11 +15,16 @@
 
 
 inline std::shared_ptr<BaseView> CommentView(
+  ftxui::Components comments,
   std::function<void()> exitCallback
 ) {
     class CommentViewImpl : public BaseView {
     public:
-        CommentViewImpl(std::function<void()> exitCallback) : exitCallback_(exitCallback), BaseView() {}
+        CommentViewImpl(ftxui::Components comments, std::function<void()> exitCallback) :  exitCallback_(exitCallback), BaseView()
+        {
+          comments_ = ftxui::Container::Vertical(comments);
+          this->Add(comments_);
+        }
         bool OnEvent(ftxui::Event event) override {
 
           if (event == ftxui::Event::Escape) {
@@ -38,11 +43,16 @@ inline std::shared_ptr<BaseView> CommentView(
 
             return {{"Escape", "Exit"}};
         }
+        ftxui::Element OnRender() override {
+            return comments_->Render();
+        }
 
     private:
         std::function<void()> exitCallback_;
+        ftxui::Component comments_;
+
     };
-    return std::shared_ptr<BaseView>(new CommentViewImpl(exitCallback));
+    return std::shared_ptr<BaseView>(new CommentViewImpl(comments,exitCallback));
 }
 
 

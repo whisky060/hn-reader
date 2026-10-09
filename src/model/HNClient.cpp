@@ -28,7 +28,7 @@ HNClient::~HNClient()
 
 std::vector<ID> HNClient::FetchToStories()
 {
-    this->handle = curl_easy_init();
+    auto handle = curl_easy_init();
     std::string result_sting = "";
 
     if (handle == nullptr)
@@ -89,7 +89,7 @@ std::vector<ID> HNClient::CreateIdList(const std::string &json_data)
 
 nlohmann::json HNClient::FetchID(ID id)
 {
-    this->handle = curl_easy_init();
+    auto handle = curl_easy_init();
     std::string result_sting = "";
 
     if (handle == nullptr)
@@ -136,7 +136,7 @@ nlohmann::json HNClient::FetchID(ID id)
 
 std::string HNClient::FetchArticle(std::string article_url)
 {
-    this->handle = curl_easy_init();
+    auto handle = curl_easy_init();
     std::string response;
     long http_code = 0l;
 

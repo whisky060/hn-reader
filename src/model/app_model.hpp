@@ -13,6 +13,8 @@
 #include "IndexTracker.hpp"
 #include "model/ArticleScraper.hpp"
 #include "model/ContentBlock.hpp"
+#include "concurrency/Dispatcher.hpp"
+#include "concurrency/ThreadPool.hpp"
 
 class AppModel : public std::enable_shared_from_this<AppModel> {
     public:
@@ -45,6 +47,8 @@ class AppModel : public std::enable_shared_from_this<AppModel> {
     private:
 
         std::shared_ptr<HNClient> client = std::make_shared<HNClient>();
+        std::shared_ptr<Dispatcher> dispatcher;
+        std::shared_ptr<ThreadPool> pool;
         std::unique_ptr<ArticleScraper> scraper_;
         const int fetch_limit = 25;
         IndexTracker top_stories_;
