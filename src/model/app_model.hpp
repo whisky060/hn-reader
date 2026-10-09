@@ -2,6 +2,7 @@
 #define APP_MODEL_H
 
 #include <ftxui/component/app.hpp>
+#include <functional>
 #include <vector>
 #include <string>
 #include <atomic>
@@ -15,6 +16,16 @@
 #include "model/ContentBlock.hpp"
 #include "concurrency/Dispatcher.hpp"
 #include "concurrency/ThreadPool.hpp"
+#include "concurrency/FetchResult.hpp"
+
+template<class T>
+using CommentCallback = std::function<void(FetchResult<T>)>;
+
+
+using ArticleCallback = std::function<void(FetchResult<std::string>)>;
+
+template<class T>
+using ListCallback = std::function<void(FetchResult<T>)>;
 
 class AppModel : public std::enable_shared_from_this<AppModel> {
     public:
@@ -22,28 +33,16 @@ class AppModel : public std::enable_shared_from_this<AppModel> {
         ~AppModel()=default;
 
         std::vector<ID> FetchTopStories();
-        StoryDataBlock FetchStory(ID id);
-        CommentDataBlock FetchComment(ID id);
-        JobDataBlock FetchJob(ID id);
-        bool isLoading() const {return is_loading_.load();}
+        StoryDataBlock FetchStorySync(ID id);
+        CommentDataBlock FetchCommentSync(ID id);
+        JobDataBlock FetchJobSync(ID id);
+        void FetchArticle(std::string articleUrl, ArticleCallback callback);
+        void FetchMoreStories(ListCallback<std::vector<StoryDataBlock>> callback);
+
+
         void LoadMoreStories();
-        void GetArticle(std::string articleUrl);
-        std::shared_ptr<std::vector<JobDataBlock>> GetJobList() const { return job_list_; }
-        std::shared_ptr<std::vector<CommentDataBlock>> GetComments() const { return comments_; }
-        std::shared_ptr<const std::vector<StoryDataBlock>> GetArticlesList() const { return articles_list_.load(); }
-        std::shared_ptr<ContentBlock> GetArticleContent() { return articleContent_.load(); };
-        void SetPendingException(std::exception_ptr e)
-        {
-            std::lock_guard<std::mutex> lock(exceptionGuard);
-            pendingExeption = e;
-        };
-        std::exception_ptr GetPendingException()
-        {
-            std::lock_guard<std::mutex> lock(exceptionGuard);
-            auto e = pendingExeption;
-            pendingExeption = nullptr;
-            return e;
-        };
+
+
     private:
 
         std::shared_ptr<HNClient> client = std::make_shared<HNClient>();

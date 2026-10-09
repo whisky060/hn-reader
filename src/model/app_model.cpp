@@ -1,8 +1,11 @@
 #include "app_model.hpp"
+#include "concurrency/FetchResult.hpp"
 #include "concurrency/ThreadPool.hpp"
 #include "model/ArticleScraper.hpp"
+#include "model/DataBlock.hpp"
 #include <exception>
 #include <memory>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -25,7 +28,7 @@ std::vector<ID> AppModel::FetchTopStories()
    return std::move(client->FetchToStories());
 }
 
-StoryDataBlock AppModel::FetchStory(ID id)
+StoryDataBlock AppModel::FetchStorySync(ID id)
 {
    nlohmann::json story = client->FetchID(id);
 
@@ -43,7 +46,7 @@ StoryDataBlock AppModel::FetchStory(ID id)
    return article_block;
 }
 
-CommentDataBlock AppModel::FetchComment(ID id)
+CommentDataBlock AppModel::FetchCommentSync(ID id)
 {
    nlohmann::json comment = client->FetchID(id);
    auto comment_block = CommentDataBlock(
@@ -58,7 +61,7 @@ CommentDataBlock AppModel::FetchComment(ID id)
    return comment_block;
 }
 
-JobDataBlock AppModel::FetchJob(ID id)
+JobDataBlock AppModel::FetchJobSync(ID id)
 {
    nlohmann::json job = client->FetchID(id);
    auto job_block = JobDataBlock(
@@ -74,26 +77,43 @@ JobDataBlock AppModel::FetchJob(ID id)
    return job_block;
 }
 
-void AppModel::GetArticle(std::string articleUrl)
+void AppModel::FetchArticle(std::string articleUrl, ArticleCallback callback)
 {
-   if(client == nullptr)
-      return;
+  if(client == nullptr)
+    return;
 
 
+  auto fn = pool->Submit([self = shared_from_this(),articleUrl, callback](){
+    try
+    {
+      auto article = self->client->FetchArticle(articleUrl);
+      auto res = FetchResult<std::string>::Success(article);
+      self->dispatcher->Post([callback,res](){ callback(res); });
+    } catch (...) {
+      auto res = FetchResult<std::string>::Failure(std::current_exception());
+      self->dispatcher->Post([callback,res](){ callback(res);});
+    }
+  });
+}
 
-   articleContent_.store(nullptr);
-   std::thread([self = shared_from_this(), articleUrl]()
-   {	try
-   		{
-			auto article = self->client->FetchArticle(articleUrl);
-    		self->articleContent_.store(std::make_shared<ContentBlock>((*self->scraper_)(article)));
-   		} catch (...)
-     	{
-      		self->SetPendingException(std::current_exception());
-        	self->articleContent_.store(nullptr);
-     	}
-
-   }).detach();
+void AppModel::FetchMoreStories(ListCallback<std::vector<StoryDataBlock>> callback)
+{
+  auto fn = pool->Submit([self = shared_from_this(), callback]()
+    {
+      try {
+        std::vector<StoryDataBlock> combined;
+        for(int i = 0; i < self->fetch_limit; i++)
+        {
+          combined.push_back(self->FetchStorySync(self->top_stories_.SafeNext()));
+        }
+        auto res = FetchResult<std::vector<StoryDataBlock>>::Success(combined);
+        self->dispatcher->Post([callback, res](){callback(res);});
+      } catch (...)
+      {
+        auto res = FetchResult<std::vector<StoryDataBlock>>::Failure(std::current_exception());
+        self->dispatcher->Post([callback,res](){ callback(res);});
+      }
+    });
 }
 
 void AppModel::LoadMoreStories()
