@@ -1,5 +1,6 @@
 #ifndef ARTICLELISTVIEW_H
 #define ARTICLELISTVIEW_H
+#include <exception>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
@@ -9,34 +10,41 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "concurrency/FetchResult.hpp"
+#include "model/app_model.hpp"
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
 #include "view/BaseView.hpp"
 #include "widgets/Spinner/spinner.hpp"
 
+enum class ListState
+{
+  FirstLoad,
+  Ready,
+  Error,
+  Loading
+};
+
 inline std::shared_ptr<BaseView> ArticleList(
-							std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
                             std::function<void(std::string)> on_select,
-                            std::function<void()> on_load,
-                            std::function<bool()> is_loading
-						)
+                            std::function<void(ListCallback)> on_load
+						              )
 
 {
 
     class ImplArticleList : public BaseView
     {
     public:
-        ImplArticleList(std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles,
-                        std::function<void()> on_load,
-                        std::function<void(std::string)> on_select,
-                        std::function<bool()> is_loading) : BaseView()
+        ImplArticleList(
+                        std::function<void(ListCallback)> on_load,
+                        std::function<void(std::string)> on_select
+                        ) : BaseView()
         {
-            get_articles_ = get_articles;
-            articles_ = get_articles_();
+
             on_load_ = on_load;
             on_select_ = on_select;
-            is_loading_ = is_loading;
+            state = ListState::FirstLoad;
             std::string first_pattern[] = {
 
                 "█   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
@@ -132,13 +140,7 @@ inline std::shared_ptr<BaseView> ArticleList(
 
             spinner_ = Spinner(pattern, 1000ms) | ftxui::center;
 
-            old_state = false;
-            for (auto &article : *articles_)
-            {
-                entries_.push_back(ftxui::Make<ArticleEntry>(article, on_select_));
-
-            }
-            list_ = ftxui::Container::Vertical(entries_);
+            list_ = ftxui::Container::Vertical({});
 
             auto button_options = ftxui::ButtonOption::Simple();
             button_options.transform = [](const ftxui::EntryState &state)
@@ -151,10 +153,30 @@ inline std::shared_ptr<BaseView> ArticleList(
                 return content | ftxui::center;
             };
 
-            auto load_more_button = ftxui::Button("Load More", on_load_, button_options);
+            ListCallback callback = [this](FetchResult<std::vector<StoryDataBlock>> res){
+               if(res.OK())
+               {
+                 this->state = ListState::Ready;
+                 auto value = res.GetValue();
+                 this->articles_.insert(this->articles_.end(), value.begin(), value.end());
+                 this->Refresh();
+               }
+               else
+               {
+                 this->state = ListState::Error;
+                 std::rethrow_exception(res.GetException());
+               }
+            };
+
+            auto load_more_button = ftxui::Button("Load More", [this,callback]{
+              this->AddSpinner();
+              this->state = ListState::Loading;
+              this->on_load_(callback);
+            }, button_options);
+
             load_more_button_ = load_more_button;
             this->Add(list_);
-            list_->Add(load_more_button_);
+            on_load_(callback);
         }
 
         std::string GetTitle() const override { return "Top Stories"; }
@@ -168,25 +190,12 @@ inline std::shared_ptr<BaseView> ArticleList(
 
         ftxui::Element OnRender() override
         {
-            bool loading = is_loading_();
 
-            if (list_->ChildCount() < 2 && loading)
+
+            if (state == ListState::FirstLoad)
             {
-                old_state = loading;
                 return first_load_spinner_->Render() | ftxui::center;
             }
-
-            if (old_state && !loading)
-            {
-                Refresh();
-            }
-
-            if (loading && !old_state)
-            {
-              AddSpinner();
-            }
-
-            old_state = loading;
 
             return list_->Render() | ftxui::vscroll_indicator | ftxui::yframe;
         }
@@ -206,20 +215,16 @@ inline std::shared_ptr<BaseView> ArticleList(
         void Refresh()
         {
 
-            auto next = get_articles_();
-            if (next.get() == articles_.get())
-                return;
+            int indx = list_->ChildCount();
 
-            int indx = articles_->size();
-            articles_ = next;
-            for (int i = indx; i < articles_->size(); i++)
+            for (int i = indx; i < articles_.size(); i++)
             {
-                auto entry = ftxui::Make<ArticleEntry>(articles_->at(i), on_select_);
+                auto entry = ftxui::Make<ArticleEntry>(articles_.at(i), on_select_);
                 list_->Add(entry);
             }
 
             spinner_->Detach();
-            if (articles_->size() < 500)
+            if (articles_.size() < 500)
                 list_->Add(load_more_button_);
         }
 
@@ -235,17 +240,14 @@ inline std::shared_ptr<BaseView> ArticleList(
         ftxui::Component list_;
         ftxui::Component first_load_spinner_;
         ftxui::Component spinner_;
-        std::shared_ptr<const std::vector<StoryDataBlock>> articles_;
+        std::vector<StoryDataBlock> articles_;
         std::vector<ftxui::Component> entries_;
-        std::function<void()> on_load_;
+        std::function<void(ListCallback)> on_load_;
         std::function<void(std::string)> on_select_;
-        std::function<bool()> is_loading_;
-        std::function<std::shared_ptr<const std::vector<StoryDataBlock>>()> get_articles_;
-        bool old_state;
+        ListState state;
     };
 
-    return std::static_pointer_cast<BaseView>(
-        ftxui::Make<ImplArticleList>(get_articles, on_load, on_select, is_loading));
+    return std::static_pointer_cast<BaseView>(ftxui::Make<ImplArticleList>(on_load, on_select));
 }
 
 #endif

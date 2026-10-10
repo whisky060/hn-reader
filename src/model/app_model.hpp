@@ -22,14 +22,14 @@ template<class T>
 using CommentCallback = std::function<void(FetchResult<T>)>;
 
 
-using ArticleCallback = std::function<void(FetchResult<std::string>)>;
+using ArticleCallback = std::function<void(FetchResult<ContentBlock>)>;
 
-template<class T>
-using ListCallback = std::function<void(FetchResult<T>)>;
+
+using ListCallback = std::function<void(FetchResult<std::vector<StoryDataBlock>>)>;
 
 class AppModel : public std::enable_shared_from_this<AppModel> {
     public:
-        AppModel();
+        AppModel( std::shared_ptr<Dispatcher> dispatcher);
         ~AppModel()=default;
 
         std::vector<ID> FetchTopStories();
@@ -37,17 +37,14 @@ class AppModel : public std::enable_shared_from_this<AppModel> {
         CommentDataBlock FetchCommentSync(ID id);
         JobDataBlock FetchJobSync(ID id);
         void FetchArticle(std::string articleUrl, ArticleCallback callback);
-        void FetchMoreStories(ListCallback<std::vector<StoryDataBlock>> callback);
-
-
-        void LoadMoreStories();
+        void FetchMoreStories(ListCallback callback);
 
 
     private:
 
         std::shared_ptr<HNClient> client = std::make_shared<HNClient>();
-        std::shared_ptr<Dispatcher> dispatcher;
-        std::shared_ptr<ThreadPool> pool;
+        std::shared_ptr<Dispatcher> dispatcher_;
+        std::shared_ptr<ThreadPool> pool_;
         std::unique_ptr<ArticleScraper> scraper_;
         const int fetch_limit = 25;
         IndexTracker top_stories_;

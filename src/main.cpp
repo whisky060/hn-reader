@@ -18,8 +18,8 @@ int main() {
  try {
 
     App app = App::Fullscreen();
-    auto model = std::make_shared<AppModel>();
     auto dispatcher = std::make_shared<Dispatcher>();
+    auto model = std::make_shared<AppModel>(dispatcher);
     auto controller = ftxui::Make<AppController>(model);
     ftxui::Loop loop(&app, controller);
 

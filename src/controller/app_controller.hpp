@@ -1,6 +1,7 @@
 #ifndef APP_CONTROLLER_H
 #define APP_CONTROLLER_H
 
+#include <exception>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -29,7 +30,7 @@ public:
 
 private:
     void FetchArticles(){ model_->FetchTopStories(); };
-    void DrainException();
+    void HandleException(std::exception_ptr exc);
     Component curr_view;
     std::shared_ptr<AppModel> model_;
     std::shared_ptr<AbstractTemplate> template_;

@@ -1,17 +1,19 @@
 #include "app_model.hpp"
+#include "concurrency/Dispatcher.hpp"
 #include "concurrency/FetchResult.hpp"
 #include "concurrency/ThreadPool.hpp"
 #include "model/ArticleScraper.hpp"
+#include "model/ContentBlock.hpp"
 #include "model/DataBlock.hpp"
 #include <exception>
 #include <memory>
 #include <string>
-#include <thread>
 #include <vector>
 
-AppModel::AppModel()
+AppModel::AppModel(std::shared_ptr<Dispatcher> dispatcher)
 {
-   pool = std::make_shared<ThreadPool>();
+   dispatcher_ = std::move(dispatcher);
+   pool_ = std::make_shared<ThreadPool>();
    articles_list_.store(std::make_shared<std::vector<StoryDataBlock>>());
    articleContent_ = nullptr;
    comments_ = std::make_shared<std::vector<CommentDataBlock>>();
@@ -83,22 +85,23 @@ void AppModel::FetchArticle(std::string articleUrl, ArticleCallback callback)
     return;
 
 
-  auto fn = pool->Submit([self = shared_from_this(),articleUrl, callback](){
+  auto fn = pool_->Submit([self = shared_from_this(),articleUrl, callback](){
     try
     {
       auto article = self->client->FetchArticle(articleUrl);
-      auto res = FetchResult<std::string>::Success(article);
-      self->dispatcher->Post([callback,res](){ callback(res); });
+      auto content =  (*self->scraper_)(article);
+      auto res = FetchResult<ContentBlock>::Success(content);
+      self->dispatcher_->Post([callback,res](){ callback(res); });
     } catch (...) {
-      auto res = FetchResult<std::string>::Failure(std::current_exception());
-      self->dispatcher->Post([callback,res](){ callback(res);});
+      auto res = FetchResult<ContentBlock>::Failure(std::current_exception());
+      self->dispatcher_->Post([callback,res](){ callback(res);});
     }
   });
 }
 
-void AppModel::FetchMoreStories(ListCallback<std::vector<StoryDataBlock>> callback)
+void AppModel::FetchMoreStories(ListCallback callback)
 {
-  auto fn = pool->Submit([self = shared_from_this(), callback]()
+  auto fn = pool_->Submit([self = shared_from_this(), callback]()
     {
       try {
         std::vector<StoryDataBlock> combined;
@@ -107,35 +110,11 @@ void AppModel::FetchMoreStories(ListCallback<std::vector<StoryDataBlock>> callba
           combined.push_back(self->FetchStorySync(self->top_stories_.SafeNext()));
         }
         auto res = FetchResult<std::vector<StoryDataBlock>>::Success(combined);
-        self->dispatcher->Post([callback, res](){callback(res);});
+      self->dispatcher_->Post([callback, res](){callback(res);});
       } catch (...)
       {
         auto res = FetchResult<std::vector<StoryDataBlock>>::Failure(std::current_exception());
-        self->dispatcher->Post([callback,res](){ callback(res);});
+        self->dispatcher_->Post([callback,res](){ callback(res);});
       }
     });
-}
-
-void AppModel::LoadMoreStories()
-{
-   bool expected = false;
-   if(!is_loading_.compare_exchange_strong(expected, true))
-      return;
-
-   std::thread([self = shared_from_this()]()
-   {
-      try{
-          auto combined = std::make_shared<std::vector<StoryDataBlock>>(*self->articles_list_.load());
-          for(int i = 0; i < self->fetch_limit; i++)
-          {
-            combined->push_back(self->FetchStory(self->top_stories_.SafeNext()));
-          }
-          self->articles_list_.store(combined);
-      }
-      catch(...){
-         self->is_loading_.store(false);
-      }
-
-      self->is_loading_.store(false);
-   }).detach();
 }

@@ -4,6 +4,7 @@
 #include <ftxui/dom/elements.hpp>
 #include <memory>
 #include <string>
+#include "model/app_model.hpp"
 #include "view/template/BaseTemplate.hpp"
 #include "view/ArticleList/ArticleListView.hpp"
 #include "view/ArticleView/ArticleView.hpp"
@@ -14,25 +15,36 @@
 AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
 {
   model_ = model;
-  model_->LoadMoreStories();
-  template_ = BaseTemplate(ArticleList([model = model_]() { return model->GetArticlesList(); },
+  template_ = BaseTemplate(ArticleList(
                                         [this, model = model_](std::string articleUrl)
                                         {
-                                            model->GetArticle(articleUrl);
-                                            auto articleContent = ArticleView(
-                                                [model = model]() { return model->GetArticleContent(); },
-                                                [this]() { this->template_->PopView(); },
-                                                articleUrl
-                                            );
+                                          auto articleView = ArticleView(
+                                                     // request (higher-order): view calls this ONCE in its ctor, passing its handler
+                                                     [model, articleUrl, this](ArticleCallback inner)
+                                                     {
+                                                         model->FetchArticle(articleUrl,
+                                                             // error-interception wrapper: same convention as on_load
+                                                             [this, inner](auto res)
+                                                             {
+                                                                 try   { inner(res); }
+                                                                 catch (...) { HandleException(std::current_exception()); }
+                                                             });
+                                                     },
+                                                     // exit: Esc → back to the list
+                                                     [this]() { template_->PopView(); },
+                                                     articleUrl
+                                                 );
 
-                                            this->template_->ChangeView(articleContent);
+                                            this->template_->ChangeView(articleView);
+
                                         },
-                                        [this]()
-                                        {this->model_->LoadMoreStories();},
-                                        [this](){
-                                            return this->model_->isLoading();
-                                        }
-                            ));
+                                        [this, model = model_](ListCallback inner)
+                                        {
+                                          model->FetchMoreStories([this, inner](FetchResult<std::vector<StoryDataBlock>> res) {
+                                                 try   { inner(res); }
+                                                 catch (...) { HandleException(std::current_exception()); }  // → alert
+                                             });
+                                        }));
   this->Add(template_);
 
 }
@@ -41,22 +53,20 @@ AppController::~AppController() {}
 
 Element AppController::OnRender() {
 
-	 DrainException();
-
-    // Render the component
-    return template_->Render();
+  // Render the component
+  return template_->Render();
 }
 
-void AppController::DrainException()
+void AppController::HandleException(std::exception_ptr exc)
 {
-	std::exception_ptr e = model_->GetPendingException();
-	if(!e)
+
+	if(!exc)
 	{
 		return;
 	}
 
 	try {
-		std::rethrow_exception(e);
+		std::rethrow_exception(exc);
 	}
 	catch (ScrapingException& ex)
 	{

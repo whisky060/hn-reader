@@ -1,9 +1,13 @@
 #ifndef ARTICLEVIEW
 #define ARTICLEVIEW
 
+#include "concurrency/FetchResult.hpp"
 #include "ftxui/dom/elements.hpp"
+#include "lexbor/html/common.h"
 #include "model/ContentBlock.hpp"
+#include "model/app_model.hpp"
 #include "widgets/Scroll/ScrollView.hpp"
+#include <exception>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp> // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
@@ -19,17 +23,25 @@
 #include "utility/utility.h"
 #include "view/BaseView.hpp"
 
+enum class ArticleState
+{
+  Ready,
+  Loading,
+  Error
+};
+
 class ArticleViewImp : public BaseView {
 public:
   ArticleViewImp(
-      std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
+      std::function<void(ArticleCallback)> request,
       std::function<void()> exitCallback,
       std::string articleUrl) {
 
-    articleContentGetter_ = articleContentGetter;
+
     exitCallback_ = exitCallback;
     articleContent_ = nullptr;
     articleUrl_ = articleUrl;
+    state = ArticleState::Loading;
     std::string first_pattern[] = {
 
         "█   ▒ ▒   ▒       ▒▒▒▒  ▒▒▒▒▒  ▒▒▒  ▒▒▒▒  ▒▒▒▒▒ ▒▒▒▒\n"
@@ -101,6 +113,20 @@ public:
     };
     loadingSpinner_ = Spinner(first_pattern, 1000ms);
     this->Add(loadingSpinner_);
+
+    request([this](FetchResult<ContentBlock> res){
+        if(res.OK())
+        {
+          this->CreateArticleContent(res.GetValue());
+          this->state = ArticleState::Ready;
+        }
+        else {
+        {
+          this->state = ArticleState::Error;
+          std::rethrow_exception(res.GetException());
+        }
+        }
+    });
   };
   ~ArticleViewImp() = default;
 
@@ -118,13 +144,17 @@ public:
   }
 
   ftxui::Element OnRender() override {
-    if (articleContent_ == nullptr && articleContentGetter_() == nullptr)
+    if(state == ArticleState::Loading)
+    {
       return loadingSpinner_->Render() | ftxui::center;
-    else if (articleContent_ == nullptr) {
-      CreateArticleContent();
+    }
+
+    if(state ==  ArticleState::Ready)
+    {
       return articleContent_->Render() | ftxui::vscroll_indicator;
-    } else
-      return articleContent_->Render() | ftxui::vscroll_indicator;
+    }
+
+    return ftxui::text("");
   };
 
   bool Focusable() const override { return true; }
@@ -145,12 +175,9 @@ public:
   }
 
 private:
-  void CreateArticleContent() {
-    auto content = articleContentGetter_();
-    if (content == nullptr)
-      return;
+  void CreateArticleContent(ContentBlock content) {
 
-    articleContent_ = ScrollView(CreateFromBlock(*content));
+    articleContent_ = ScrollView(CreateFromBlock(content));
     this->Add(articleContent_);
   };
 
@@ -399,7 +426,8 @@ private:
     return RenderChildren(block);
   }
 
-  std::function<std::shared_ptr<ContentBlock>()> articleContentGetter_;
+
+  ArticleState state;
   std::function<void()> exitCallback_;
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
@@ -409,11 +437,11 @@ private:
 };
 
 inline std::shared_ptr<BaseView>
-ArticleView(std::function<std::shared_ptr<ContentBlock>()> articleContentGetter,
+ArticleView(std::function<void(ArticleCallback)> request,
             std::function<void()> exitCallback,
             std::string articleUrl) {
   return std::static_pointer_cast<BaseView>(
-      ftxui::Make<ArticleViewImp>(articleContentGetter, exitCallback, articleUrl));
+      ftxui::Make<ArticleViewImp>(request, exitCallback, articleUrl));
 }
 
 #endif
