@@ -7,15 +7,22 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/mouse.hpp>
 #include <format>
+#include <functional>
+#include <vector>
 #include "utility/utility.h"
 #include "model/DataBlock.hpp"
 
 class ArticleEntry : public ftxui::ComponentBase
 {
 public:
-    ArticleEntry(StoryDataBlock article, std::function<void(std::string)> on_select) :
+    ArticleEntry(
+      StoryDataBlock article,
+      std::function<void(std::string)> on_select,
+      std::function<void(std::vector<ID>)> on_openComments
+    ) :
      article_(article),
-     on_select_(on_select)
+     on_select_(on_select),
+     on_openComments_(on_openComments)
      {};
 
     ftxui::Element OnRender() override
@@ -53,6 +60,13 @@ public:
             return true;
         }
 
+        // opens the comments of the related article
+        if(event == ftxui::Event::c)
+        {
+          on_openComments_(article_.comments_);
+          return true;
+        }
+
         if(event.is_mouse())
         {
             if(event.mouse().button == ftxui::Mouse::Left && event.mouse().motion == ftxui::Mouse::Pressed)
@@ -82,6 +96,7 @@ public:
 
 private:
     std::function<void(std::string)> on_select_;
+    std::function<void(std::vector<ID>)> on_openComments_;
     ftxui::Box box_;
     StoryDataBlock article_;
 };

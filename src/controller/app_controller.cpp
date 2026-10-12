@@ -4,10 +4,12 @@
 #include <ftxui/dom/elements.hpp>
 #include <memory>
 #include <string>
+#include <vector>
 #include "model/app_model.hpp"
 #include "view/template/BaseTemplate.hpp"
 #include "view/ArticleList/ArticleListView.hpp"
 #include "view/ArticleView/ArticleView.hpp"
+#include "view/CommentView/CommentView.hpp"
 #include "utility/utility.h"
 #include "exeptions/scraping_exception.hpp"
 #include "exeptions/connection_exception.hpp"
@@ -16,6 +18,17 @@ AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
 {
   model_ = model;
   template_ = BaseTemplate(ArticleList(
+                                        [this](std::vector<ID> comments)
+                                        {
+                                          auto commentView = CommentView(
+                                            comments,
+                                            [model= model_,this](std::vector<ID> comments_, CommentCallback callback){
+                                              model->FetchComments(comments_,callback);
+                                            },
+                                            [this]() { template_->PopView(); }
+                                          );
+                                          this->template_->ChangeView(commentView);
+                                        },
                                         [this, model = model_](std::string articleUrl)
                                         {
                                           auto articleView = ArticleView(

@@ -110,11 +110,34 @@ void AppModel::FetchMoreStories(ListCallback callback)
           combined.push_back(self->FetchStorySync(self->top_stories_.SafeNext()));
         }
         auto res = FetchResult<std::vector<StoryDataBlock>>::Success(combined);
-      self->dispatcher_->Post([callback, res](){callback(res);});
+        self->dispatcher_->Post([callback, res](){callback(res);});
       } catch (...)
       {
         auto res = FetchResult<std::vector<StoryDataBlock>>::Failure(std::current_exception());
         self->dispatcher_->Post([callback,res](){ callback(res);});
       }
+    });
+}
+
+
+void AppModel::FetchComments(std::vector<ID> comments, CommentCallback callback)
+{
+  auto fn = pool_->Submit([self = shared_from_this(), callback, comments]()
+    {
+      try
+      {
+        std::vector<CommentDataBlock> commentBlock;
+        for(auto& id : comments)
+        {
+          commentBlock.push_back(self->FetchCommentSync(id));
+        }
+        auto res = FetchResult<std::vector<CommentDataBlock>>::Success(commentBlock);
+        callback(res);
+      } catch (...)
+      {
+        auto res = FetchResult<std::vector<CommentDataBlock>>::Failure(std::current_exception());
+        self->dispatcher_->Post([callback, res](){callback(res);});
+      }
+
     });
 }

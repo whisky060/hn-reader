@@ -7,6 +7,7 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/mouse.hpp>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +29,7 @@ enum class ListState
 };
 
 inline std::shared_ptr<BaseView> ArticleList(
+                            std::function<void(std::vector<ID>)> load_comments,
                             std::function<void(std::string)> on_select,
                             std::function<void(ListCallback)> on_load
 						              )
@@ -38,11 +40,13 @@ inline std::shared_ptr<BaseView> ArticleList(
     {
     public:
         ImplArticleList(
+                        std::function<void(std::vector<ID>)> load_comments,
                         std::function<void(ListCallback)> on_load,
                         std::function<void(std::string)> on_select
                         ) : BaseView()
         {
 
+            load_comments_ = load_comments;
             on_load_ = on_load;
             on_select_ = on_select;
             state = ListState::FirstLoad;
@@ -96,6 +100,7 @@ inline std::shared_ptr<BaseView> ArticleList(
         std::vector<Shortcut> GetShortcuts() const override {
             return {
                 {"Enter", "open"},
+                {"c", "open comments"},
                 {"Up/Down", "navigate"},
             };
         }
@@ -131,7 +136,7 @@ inline std::shared_ptr<BaseView> ArticleList(
 
             for (int i = indx; i < articles_.size(); i++)
             {
-                auto entry = ftxui::Make<ArticleEntry>(articles_.at(i), on_select_);
+                auto entry = ftxui::Make<ArticleEntry>(articles_.at(i), on_select_, load_comments_);
                 list_->Add(entry);
             }
 
@@ -156,10 +161,11 @@ inline std::shared_ptr<BaseView> ArticleList(
         std::vector<ftxui::Component> entries_;
         std::function<void(ListCallback)> on_load_;
         std::function<void(std::string)> on_select_;
+        std::function<void(std::vector<ID>)> load_comments_;
         ListState state;
     };
 
-    return std::static_pointer_cast<BaseView>(ftxui::Make<ImplArticleList>(on_load, on_select));
+    return std::static_pointer_cast<BaseView>(ftxui::Make<ImplArticleList>(load_comments,on_load, on_select));
 }
 
 #endif

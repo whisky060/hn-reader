@@ -18,8 +18,8 @@
 #include "concurrency/ThreadPool.hpp"
 #include "concurrency/FetchResult.hpp"
 
-template<class T>
-using CommentCallback = std::function<void(FetchResult<T>)>;
+
+using CommentCallback = std::function<void(FetchResult<std::vector<CommentDataBlock>>)>;
 
 
 using ArticleCallback = std::function<void(FetchResult<ContentBlock>)>;
@@ -38,6 +38,7 @@ class AppModel : public std::enable_shared_from_this<AppModel> {
         JobDataBlock FetchJobSync(ID id);
         void FetchArticle(std::string articleUrl, ArticleCallback callback);
         void FetchMoreStories(ListCallback callback);
+        void FetchComments(std::vector<ID> commentsIDs, CommentCallback callback);
 
 
     private:
