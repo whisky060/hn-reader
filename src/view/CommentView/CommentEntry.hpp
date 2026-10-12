@@ -11,6 +11,7 @@
 #include <vector>
 #include "model/DataBlock.hpp"
 #include "widgets/Spinner/spinner.hpp"
+#include "widgets/Spinner/patterns.hpp"
 
 
 inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<void(std::vector<ID>)> loadSub) {
@@ -22,18 +23,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
             isLoading = false;
             sub_ = ftxui::Container::Vertical({});
             commentEntry = ftxui::Collapsible(comment.text_,sub_,&show);
-            spinner_  = Spinner({
-              "●     ",
-              " ●    ",
-              "  ●   ",
-              "   ●  ",
-              "    ● ",
-              "     ●",
-              "    ● ",
-              "   ●  ",
-              "  ●   ",
-              " ●    "
-            });
+            spinner_ = Spinner(spinner_patterns::Dots);
             this->Add(commentEntry);
             this->Add(spinner_);
         }

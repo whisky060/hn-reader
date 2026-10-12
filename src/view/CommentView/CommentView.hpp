@@ -11,8 +11,6 @@
 #include <functional>
 #include <memory>
 #include "view/BaseView.hpp"
-#include "view/template/BaseView.hpp"
-
 
 inline std::shared_ptr<BaseView> CommentView(
   ftxui::Components comments,
@@ -36,13 +34,14 @@ inline std::shared_ptr<BaseView> CommentView(
         }
 
         std::string GetTitle() const override {
-            return "";
+            return "Comments";
         }
 
         std::vector<Shortcut> GetShortcuts() const override {
 
             return {{"Escape", "Exit"}};
         }
+
         ftxui::Element OnRender() override {
             return comments_->Render();
         }
