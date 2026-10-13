@@ -3,7 +3,6 @@
 
 #include "concurrency/FetchResult.hpp"
 #include "ftxui/dom/elements.hpp"
-#include "lexbor/html/common.h"
 #include "model/ContentBlock.hpp"
 #include "model/app_model.hpp"
 #include "widgets/Scroll/ScrollView.hpp"
@@ -248,10 +247,7 @@ private:
       for (auto &e : inline_buf)
         e |= ftxui::xflex_shrink;
       block_out.push_back(
-      	ftxui::flexbox(std::move(inline_buf), ftxui::FlexboxConfig({
-    		 .direction = ftxui::FlexboxConfig::Direction::Row,
-       		 .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-       }).SetGap(1,0))
+      	ftxui::hflow(ftxui::hbox(std::move(inline_buf)))
       );
       inline_buf.clear();
     };
@@ -275,36 +271,18 @@ private:
   }
 
   ftxui::Element VisitH1(ContentBlock &block) {
-    return ftxui::flexbox(
-        {ftxui::text("✺ "), RenderChildren(block), ftxui::text(" ✺")},
-        ftxui::FlexboxConfig(
-            {
-                .direction = ftxui::FlexboxConfig::Direction::Row,
-                .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-            })
-            .SetGap(1, 0));
+    return ftxui::hflow(ftxui::hbox(
+        {ftxui::text("✺ "), RenderChildren(block), ftxui::text(" ✺")}));
   };
 
   ftxui::Element VisitH2(ContentBlock block) {
-    return ftxui::flexbox(
-        {ftxui::text("❊ "), RenderChildren(block), ftxui::text(" ❊")},
-        ftxui::FlexboxConfig(
-            {
-                .direction = ftxui::FlexboxConfig::Direction::Row,
-                .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-            })
-            .SetGap(1, 0));
+    return ftxui::hflow(ftxui::flexbox(
+        {ftxui::text("❊ "), RenderChildren(block), ftxui::text(" ❊")}));
   };
 
   ftxui::Element VisitH3(ContentBlock &block) {
-    return ftxui::flexbox(
-        {ftxui::text("❃ "), RenderChildren(block), ftxui::text(" ❃")},
-        ftxui::FlexboxConfig(
-            {
-                .direction = ftxui::FlexboxConfig::Direction::Row,
-                .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-            })
-            .SetGap(1, 0));
+    return ftxui::hflow(ftxui::flexbox(
+        {ftxui::text("❃ "), RenderChildren(block), ftxui::text(" ❃")}));
   };
 
   ftxui::Element VisitP(ContentBlock &block) { return RenderChildren(block); }

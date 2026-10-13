@@ -87,7 +87,7 @@ inline std::shared_ptr<BaseView> CommentView(
             if(status_ == CommentStatus::Loading)
               return spinner_->Render() | ftxui::center;
 
-            return comments_->Render() | ftxui::vscroll_indicator;
+            return comments_->Render() | ftxui::vscroll_indicator | ftxui::yframe;
         }
 
 

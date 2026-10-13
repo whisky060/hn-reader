@@ -28,7 +28,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
             isLoading = false;
             sub_ = ftxui::Container::Vertical({});
             commentEntry = WrapCollapsible(comment.text_,sub_,&show);
-            spinner_ = Spinner(spinner_patterns::Dots);
+            spinner_ = Spinner(spinner_patterns::Dots, 1000ms);
             callback = [this](FetchResult<std::vector<CommentDataBlock>> res)
               {
                 if(res.OK())
@@ -59,7 +59,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
         {
 
 
-            if(event.is_mouse() && event.mouse().button == ftxui::Mouse::Left)
+            if(event.is_mouse() && event.mouse().button == ftxui::Mouse::Left && !comment_.comments_.empty())
             {
               loadSub_(comment_.comments_, callback);
               if(sub_->ChildCount() <= 0)
@@ -67,7 +67,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
               return ftxui::ComponentBase::OnEvent(event);
             }
 
-            if(event == ftxui::Event::Return)
+            if(event == ftxui::Event::Return && !comment_.comments_.empty())
             {
               loadSub_(comment_.comments_, callback);
               if(sub_->ChildCount() <= 0)
