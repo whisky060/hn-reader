@@ -4,9 +4,11 @@
 #include "concurrency/FetchResult.hpp"
 #include "ftxui/dom/elements.hpp"
 #include "model/ContentBlock.hpp"
+#include "model/DataBlock.hpp"
 #include "model/app_model.hpp"
 #include "widgets/Scroll/ScrollView.hpp"
 #include "widgets/Spinner/patterns.hpp"
+#include <codecvt>
 #include <exception>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp> // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
@@ -19,6 +21,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "utility/utility.h"
 #include "view/BaseView.hpp"
@@ -28,6 +31,28 @@ enum class ArticleState
   Ready,
   Loading,
   Error
+};
+
+struct WalkState
+{
+  ftxui::Elements inline_;
+  ftxui::Elements blocks_;
+  int listDepth_ = 0;
+
+  void Flush()
+  {
+    if(inline_.empty())
+      return;
+    blocks_.push_back(ftxui::hflow(ftxui::hbox(std::move(inline_))));
+    inline_.clear();
+  }
+
+  ftxui::Element Finish()
+  {
+    Flush();
+    return ftxui::vbox(std::move(blocks_));
+  }
+
 };
 
 class ArticleViewImp : public BaseView {
@@ -41,7 +66,7 @@ public:
     exitCallback_ = exitCallback;
     articleContent_ = nullptr;
     articleUrl_ = articleUrl;
-    state = ArticleState::Loading;
+    state_ = ArticleState::Loading;
 
     loadingSpinner_ = Spinner(spinner_patterns::HnLoading, 1000ms);
     this->Add(loadingSpinner_);
@@ -50,11 +75,11 @@ public:
         if(res.OK())
         {
           this->CreateArticleContent(res.GetValue());
-          this->state = ArticleState::Ready;
+          this->state_ = ArticleState::Ready;
         }
         else {
         {
-          this->state = ArticleState::Error;
+          this->state_ = ArticleState::Error;
           std::rethrow_exception(res.GetException());
         }
         }
@@ -76,12 +101,12 @@ public:
   }
 
   ftxui::Element OnRender() override {
-    if(state == ArticleState::Loading)
+    if(state_ == ArticleState::Loading)
     {
       return loadingSpinner_->Render() | ftxui::center;
     }
 
-    if(state ==  ArticleState::Ready)
+    if(state_ ==  ArticleState::Ready)
     {
       return articleContent_->Render() | ftxui::vscroll_indicator;
     }
@@ -109,125 +134,14 @@ public:
 private:
   void CreateArticleContent(ContentBlock content) {
 
-    articleContent_ = ScrollView(CreateFromBlock(content));
+    articleContent_ = ScrollView(WalkBlock(content));
     this->Add(articleContent_);
   };
 
-  ftxui::Element CreateFromBlock(ContentBlock &block) {
 
-    std::vector<ftxui::Component> components;
-    switch (block.type) {
-    case ContentBlockType::BR:
-      return VisitBR(block);
-    case ContentBlockType::HR:
-      return VisitHR(block);
-    case ContentBlockType::H1:
-      return VisitH1(block);
-    case ContentBlockType::H2:
-      return VisitH2(block);
-    case ContentBlockType::H3:
-      return VisitH3(block);
-    case ContentBlockType::P:
-      return VisitP(block);
-    case ContentBlockType::TEXT:
-      return VisitTEXT(block);
-    case ContentBlockType::DIV:
-      return VisitDIV(block);
-    case ContentBlockType::A:
-      return VisitA(block);
-    case ContentBlockType::TABLE:
-      return VisitTABLE(block);
-    case ContentBlockType::TR:
-      return VisitTR(block);
-    case ContentBlockType::TD:
-      return VisitTD(block);
-    case ContentBlockType::PRE:
-      return VisitPRE(block);
-    case ContentBlockType::B:
-      return VisitB(block);
-    case ContentBlockType::I:
-      return VisitI(block);
-    case ContentBlockType::UL:
-      return VisitUL(block);
-    case ContentBlockType::BLOCKQUOTE:
-      return VisitBLOCKQUOTE(block);
-    case ContentBlockType::U:
-      return VisitU(block);
-    case ContentBlockType::CODE:
-      return VisitCODE(block);
-    case ContentBlockType::IMG:
-      return VisitIMG(block);
-    case ContentBlockType::CAPTION:
-      return VisitCAPTION(block);
-    case ContentBlockType::SPAN:
-      return VisitSPAN(block);
-    default:
-      break;
-    }
-    return ftxui::text("");
-  };
-
-
-  ftxui::Element VisitTD(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::borderLight;
-  };
-
-  ftxui::Element VisitSPAN(ContentBlock &block) {
-    return RenderChildren(block);
-  };
-
-  ftxui::Element VisitUL(ContentBlock &block, int depth = 0) {
-
-    ftxui::Elements rows;
-
-    for (auto &child : block.children) {
-      rows.push_back(VisitLI(child, depth));
-    }
-
-    return ftxui::vbox(rows);
-  };
-  ftxui::Element VisitLI(ContentBlock &block, int depth = 0) {
-
-    ftxui::Elements inLineBuffer;
-    ftxui::Elements block_out;
-    auto flush = [&] {
-      if (inLineBuffer.empty())
-        return;
-      for (auto &e : inLineBuffer)
-        e |= ftxui::xflex_shrink;
-      block_out.push_back(ftxui::flexbox(inLineBuffer, ftxui::FlexboxConfig(
-          {
-              .direction = ftxui::FlexboxConfig::Direction::Row,
-              .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-          })
-          .SetGap(1, 0)));
-      inLineBuffer.clear();
-    };
-
-    for (auto &child : block.children) {
-      if (child.type == ContentBlockType::UL) {
-        auto table = VisitUL(child, depth + 1);
-        block_out.push_back(table);
-        continue;
-      }
-      if (!IsInNewLine(child.type)) {
-        inLineBuffer.push_back(CreateFromBlock(child));
-        continue;
-      }
-      flush();
-      block_out.push_back(CreateFromBlock(child));
-    }
-    flush();
-    return ftxui::flexbox(block_out, ftxui::FlexboxConfig(
-        {
-            .direction = ftxui::FlexboxConfig::Direction::Row,
-            .wrap = ftxui::FlexboxConfig::Wrap::Wrap,
-        })
-        .SetGap(1, 0));
-  };
 
   bool IsInNewLine(ContentBlockType tag) {
-    return (tag == ContentBlockType::P || tag == ContentBlockType::IMG ||
+    return (tag == ContentBlockType::P ||
             tag == ContentBlockType::TABLE || tag == ContentBlockType::H1 ||
             tag == ContentBlockType::H2 || tag == ContentBlockType::H3 ||
             tag == ContentBlockType::BR || tag == ContentBlockType::HR ||
@@ -237,108 +151,203 @@ private:
             tag == ContentBlockType::CAPTION || tag == ContentBlockType::TR);
   }
 
-  ftxui::Element RenderChildren(ContentBlock &block) {
-    ftxui::Elements inline_buf;
-    ftxui::Elements block_out;
 
-    auto flush = [&] {
-      if (inline_buf.empty())
-        return;
-      for (auto &e : inline_buf)
-        e |= ftxui::xflex_shrink;
-      block_out.push_back(
-      	ftxui::hflow(ftxui::hbox(std::move(inline_buf)))
-      );
-      inline_buf.clear();
-    };
+  ftxui::Element WalkBlock(ContentBlock& block)
+  {
+    WalkState state;
+    ftxui::Decorator dec = ftxui::nothing;
+    switch (block.type)
+    {
+      case ContentBlockType::H1:
+        dec = dec | ftxui::bold | ftxui::underlined;
+        WalkChildren(block,state,dec);
+        return state.Finish();
+      case ContentBlockType::H2:
+        dec = dec | ftxui::bold;
+        WalkChildren(block,state,dec);
+        return state.Finish();
+      case ContentBlockType::H3:
+        WalkChildren(block,state);
+        return state.Finish();
+      case ContentBlockType::P:
+        WalkChildren(block,state);
+        return ftxui::vbox({
+          ftxui::separatorEmpty(),
+          state.Finish()
+        });
+      case ContentBlockType::DIV:
+        WalkChildren(block,state);
+        return state.Finish();
+      case ContentBlockType::BR:
+        return ftxui::separatorEmpty();
+      case ContentBlockType::HR:
+        return ftxui::separatorLight();
+      case ContentBlockType::BLOCKQUOTE:
+        WalkChildren(block,state);
+        return state.Finish() | ftxui::center | ftxui::borderLight;
+      case ContentBlockType::PRE:
+        WalkChildren(block,state);
+        return state.Finish();
+      case ContentBlockType::CAPTION:
+        WalkChildren(block,state);
+        return state.Finish() | ftxui::center;
+      case ContentBlockType::TABLE:
+        return VisitTABLE(block);
+      case ContentBlockType::UL:
+        return VisitUL(block,0);
+      default:
+        WalkChildren(block,state);
+        return state.Finish();
+    }
+  }
 
-    for (auto &c : block.children) {
-      if (!IsInNewLine(c.type)) {
-        inline_buf.push_back(CreateFromBlock(c));
-      } else {
-        flush();
-        block_out.push_back(CreateFromBlock(c));
+
+  ftxui::Element VisitTABLE(ContentBlock& block)
+  {
+    ftxui::Elements rows;
+    for(auto& child : block.children)
+    {
+      if(child.type == ContentBlockType::CAPTION)
+      {
+        WalkState state;
+        WalkChildren(block,state);
+        rows.push_back(state.Finish() | ftxui::center);
+      }
+      else if(child.type == ContentBlockType::TR)
+      {
+        rows.push_back(VisitTR(child));
       }
     }
-    flush();
-    return vbox(std::move(block_out));
+
+    return ftxui::vbox(rows) | ftxui::border | ftxui::center;
   }
 
-  ftxui::Element VisitBR(ContentBlock &block) { return ftxui::separatorEmpty(); }
+  ftxui::Element VisitTR(ContentBlock& block)
+  {
 
-  ftxui::Element VisitHR(ContentBlock &block) {
-    return ftxui::separatorLight();
+    ftxui::Elements col;
+    for(auto& child : block.children)
+    {
+      col.push_back(WalkBlock(child) | ftxui::border);
+    }
+    return ftxui::hbox(col) | ftxui::border ;
+
   }
 
-  ftxui::Element VisitH1(ContentBlock &block) {
-    return ftxui::hflow(ftxui::hbox(
-        {ftxui::text("✺ "), RenderChildren(block), ftxui::text(" ✺")}));
+  ftxui::Element VisitUL(ContentBlock& block, int depth)
+  {
+    ftxui::Elements rows;
+      for (auto& child : block.children) rows.push_back(VisitLI(child, depth));
+    return ftxui::vbox(std::move(rows));
+  }
+
+  ftxui::Element VisitLI(
+    ContentBlock& block,
+    int depth
+  )
+  {
+    WalkState state;
+    state.listDepth_ = depth;
+    for (auto& child : block.children) {
+      if (child.type == ContentBlockType::UL) {
+        state.Flush();
+        state.blocks_.push_back(VisitUL(child, depth + 1));
+      } else if (IsInNewLine(child.type)) {
+        state.Flush();
+        state.blocks_.push_back(WalkBlock(child));
+      } else {
+        WalkInLine(child,state);
+      }
+    }
+    return  state.Finish();
+  }
+
+  void WalkInLine(
+    ContentBlock& block,
+    WalkState& state,
+    ftxui::Decorator dec = ftxui::nothing
+  )
+  {
+    switch (block.type) {
+      case ContentBlockType::TEXT:
+        PushText(block.text,state,dec);
+        break;
+      case ContentBlockType::A:
+        dec = dec | ftxui::hyperlink(block.url);
+        WalkChildren(block,state,dec);
+        break;
+      case ContentBlockType::I:
+        dec = dec | ftxui::italic;
+        WalkChildren(block,state,dec);
+        break;
+      case ContentBlockType::U:
+        dec = dec | ftxui::underlined;
+        WalkChildren(block,state,dec);
+        break;
+      case ContentBlockType::SPAN:
+        WalkChildren(block,state,dec);
+        break;
+      case ContentBlockType::B:
+        dec = dec | ftxui::bold;
+        WalkChildren(block,state,dec);
+        break;
+      case ContentBlockType::CODE:
+        WalkChildren(block,state,dec);
+        break;
+      case ContentBlockType::IMG:
+         state.inline_.push_back(ftxui::text("📸") | ftxui::hyperlink(block.url));
+        break;
+      default:
+        state.Flush();
+        state.blocks_.push_back(WalkBlock(block) | dec);
+        break;
+    }
   };
 
-  ftxui::Element VisitH2(ContentBlock block) {
-    return ftxui::hflow(ftxui::flexbox(
-        {ftxui::text("❊ "), RenderChildren(block), ftxui::text(" ❊")}));
-  };
-
-  ftxui::Element VisitH3(ContentBlock &block) {
-    return ftxui::hflow(ftxui::flexbox(
-        {ftxui::text("❃ "), RenderChildren(block), ftxui::text(" ❃")}));
-  };
-
-  ftxui::Element VisitP(ContentBlock &block) { return RenderChildren(block); }
-
-  ftxui::Element VisitTEXT(ContentBlock &block) {
-    return ftxui::paragraph(block.text) | ftxui::notflex;
+  void PushText(
+    std::string_view text,
+    WalkState& state,
+    ftxui::Decorator dec = ftxui::nothing
+  )
+  {
+    size_t i = 0, n = text.size();
+     while (i < n) {
+       while (i < n && std::isspace((unsigned char)text[i])) ++i;
+       size_t start = i;
+       while (i < n && !std::isspace((unsigned char)text[i])) ++i;
+       if (start != i) PushWord(text.substr(start, i - start),state,dec);
+     }
   }
 
-  ftxui::Element VisitDIV(ContentBlock &block) { return RenderChildren(block); }
-
-  ftxui::Element VisitA(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::hyperlink(block.url) | ftxui::notflex;
-  };
-
-  ftxui::Element VisitTABLE(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::border;
+  void PushWord(
+    std::string_view word,
+    WalkState& state,
+    ftxui::Decorator dec = ftxui::nothing
+  )
+  {
+    state.inline_.push_back(ftxui::text(word) | dec);
+    state.inline_.push_back(ftxui::text(" ") | dec);
   }
 
-  ftxui::Element VisitTR(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::border;
+  void WalkChildren(ContentBlock& block, WalkState& state, ftxui::Decorator dec = ftxui::nothing)
+  {
+    for(auto& child  : block.children)
+    {
+      if(IsInNewLine(child.type))
+      {
+        state.Flush();
+        state.blocks_.push_back(WalkBlock(child) | dec);
+      }
+      else
+      {
+        WalkInLine(child,state,dec);
+      }
+
+    }
+    state.Flush();
   }
 
-  ftxui::Element VisitPRE(ContentBlock &block) {
-    return RenderChildren(block);
-  }
-
-  ftxui::Element VisitB(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::bold;
-  }
-
-  ftxui::Element VisitI(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::italic;
-  }
-
-  ftxui::Element VisitBLOCKQUOTE(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::border | ftxui::center;
-  }
-
-  ftxui::Element VisitU(ContentBlock &block) {
-    return RenderChildren(block) | ftxui::underlined;
-  }
-
-  ftxui::Element VisitCODE(ContentBlock &block) {
-    return RenderChildren(block);
-  }
-
-  ftxui::Element VisitIMG(ContentBlock &block) {
-    return ftxui::text("📸") | ftxui::hyperlink(block.url) | ftxui::notflex;
-  }
-
-  ftxui::Element VisitCAPTION(ContentBlock &block) {
-    return RenderChildren(block);
-  }
-
-
-  ArticleState state;
+  ArticleState state_;
   std::function<void()> exitCallback_;
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
