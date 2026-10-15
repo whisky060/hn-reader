@@ -6,6 +6,23 @@
 
 namespace utils {
 
+    namespace
+    {
+        std::string ShellQuote(const std::string& value)
+        {
+            std::string quoted = "'";
+            for (char c : value)
+            {
+                if (c == '\'')
+                    quoted += "'\\''";
+                else
+                    quoted += c;
+            }
+            quoted += "'";
+            return quoted;
+        }
+    }
+
 
     /*
         function that returns the current time
@@ -44,13 +61,16 @@ namespace utils {
 
     void OpenUrl(const std::string& url)
     {
+      if (url.empty())
+          return;
+
       #if defined(_WIN32) || defined(_WIN64)
           ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
       #elif defined(__APPLE__)
-          std::string command = "open " + url;
+          std::string command = "open " + ShellQuote(url);
           std::system(command.c_str());
       #elif defined(__linux__)
-        std::string command = "xdg-open " + url + " &";
+          std::string command = "xdg-open " + ShellQuote(url) + " &";
           std::system(command.c_str());
       #else
           std::cerr << "Unsupported operating system." << std::endl;

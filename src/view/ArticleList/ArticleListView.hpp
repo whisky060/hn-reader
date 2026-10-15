@@ -100,6 +100,7 @@ inline std::shared_ptr<BaseView> ArticleList(
             return {
                 {"Enter", "open"},
                 {"c", "open comments"},
+                {"Ctrl+O", "browser"},
                 {"Up/Down", "navigate"},
             };
         }

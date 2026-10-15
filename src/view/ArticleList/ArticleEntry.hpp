@@ -60,6 +60,12 @@ public:
             return true;
         }
 
+
+        if(event == ftxui::Event::CtrlO) {
+           utils::OpenUrl(article_.url_);
+           return true;
+        }
+
         // opens the comments of the related article
         if(event == ftxui::Event::c)
         {

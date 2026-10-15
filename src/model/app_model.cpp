@@ -5,6 +5,7 @@
 #include "model/ArticleScraper.hpp"
 #include "model/ContentBlock.hpp"
 #include "model/DataBlock.hpp"
+#include "exeptions/scraping_exception.hpp"
 #include <exception>
 #include <memory>
 #include <string>
@@ -92,6 +93,11 @@ void AppModel::FetchArticle(std::string articleUrl, ArticleCallback callback)
       auto content =  (*self->scraper_)(article);
       auto res = FetchResult<ContentBlock>::Success(content);
       self->dispatcher_->Post([callback,res](){ callback(res); });
+    } catch (const ScrapingException& e) {
+      auto url = e.GetUrl().empty() ? articleUrl : e.GetUrl();
+      auto res = FetchResult<ContentBlock>::Failure(
+          std::make_exception_ptr(ScrapingException(e.what(), url)));
+      self->dispatcher_->Post([callback,res](){ callback(res);});
     } catch (...) {
       auto res = FetchResult<ContentBlock>::Failure(std::current_exception());
       self->dispatcher_->Post([callback,res](){ callback(res);});
