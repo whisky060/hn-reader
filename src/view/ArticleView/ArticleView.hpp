@@ -4,11 +4,10 @@
 #include "concurrency/FetchResult.hpp"
 #include "ftxui/dom/elements.hpp"
 #include "model/ContentBlock.hpp"
-#include "model/DataBlock.hpp"
 #include "model/app_model.hpp"
 #include "widgets/Scroll/ScrollView.hpp"
 #include "widgets/Spinner/patterns.hpp"
-#include <codecvt>
+#include <cctype>
 #include <exception>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp> // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
@@ -37,13 +36,14 @@ struct WalkState
 {
   ftxui::Elements inline_;
   ftxui::Elements blocks_;
-  int listDepth_ = 0;
 
   void Flush()
   {
     if(inline_.empty())
       return;
-    blocks_.push_back(ftxui::hflow(ftxui::hbox(std::move(inline_))));
+    blocks_.push_back(ftxui::flexbox(
+      std::move(inline_),
+      ftxui::FlexboxConfig().SetGap(1, 0)));
     inline_.clear();
   }
 
@@ -210,7 +210,7 @@ private:
       if(child.type == ContentBlockType::CAPTION)
       {
         WalkState state;
-        WalkChildren(block,state);
+        WalkChildren(child,state);
         rows.push_back(state.Finish() | ftxui::center);
       }
       else if(child.type == ContentBlockType::TR)
@@ -247,7 +247,8 @@ private:
   )
   {
     WalkState state;
-    state.listDepth_ = depth;
+    state.inline_.push_back(
+      ftxui::text(listDots_[depth % listDots_.size()]));
     for (auto& child : block.children) {
       if (child.type == ContentBlockType::UL) {
         state.Flush();
@@ -262,6 +263,15 @@ private:
     return  state.Finish();
   }
 
+  void WalkInLineChildren(
+    ContentBlock& block,
+    WalkState& state,
+    ftxui::Decorator dec = ftxui::nothing
+  )
+  {
+    for (auto& child : block.children) WalkInLine(child, state, dec);
+  }
+
   void WalkInLine(
     ContentBlock& block,
     WalkState& state,
@@ -273,26 +283,22 @@ private:
         PushText(block.text,state,dec);
         break;
       case ContentBlockType::A:
-        dec = dec | ftxui::hyperlink(block.url);
-        WalkChildren(block,state,dec);
+        WalkInLineChildren(block, state, dec | ftxui::hyperlink(block.url));
         break;
       case ContentBlockType::I:
-        dec = dec | ftxui::italic;
-        WalkChildren(block,state,dec);
+        WalkInLineChildren(block, state, dec | ftxui::italic);
         break;
       case ContentBlockType::U:
-        dec = dec | ftxui::underlined;
-        WalkChildren(block,state,dec);
+        WalkInLineChildren(block, state, dec | ftxui::underlined);
         break;
       case ContentBlockType::SPAN:
-        WalkChildren(block,state,dec);
+        WalkInLineChildren(block, state, dec);
         break;
       case ContentBlockType::B:
-        dec = dec | ftxui::bold;
-        WalkChildren(block,state,dec);
+        WalkInLineChildren(block, state, dec | ftxui::bold);
         break;
       case ContentBlockType::CODE:
-        WalkChildren(block,state,dec);
+        WalkInLineChildren(block, state, dec);
         break;
       case ContentBlockType::IMG:
          state.inline_.push_back(ftxui::text("📸") | ftxui::hyperlink(block.url));
@@ -326,7 +332,6 @@ private:
   )
   {
     state.inline_.push_back(ftxui::text(word) | dec);
-    state.inline_.push_back(ftxui::text(" ") | dec);
   }
 
   void WalkChildren(ContentBlock& block, WalkState& state, ftxui::Decorator dec = ftxui::nothing)
