@@ -10,7 +10,7 @@
 // Copy of ftxui::Collapsible (collapsible.cpp) with two changes:
 //  1) the label uses paragraph() so it wraps instead of overflowing
 //  2) the child is indented with empty separator columns
-inline ftxui::Component WrapCollapsible(ftxui::ConstStringRef label,
+inline ftxui::Component WrapCollapsible(ftxui::Component label,
                                         ftxui::Component child,
                                         bool *show)
 {
@@ -24,20 +24,20 @@ inline ftxui::Component WrapCollapsible(ftxui::ConstStringRef label,
 
     class WrapCollapsibleImpl : public ftxui::ComponentBase {
     public:
-        WrapCollapsibleImpl(ftxui::ConstStringRef label,
+        WrapCollapsibleImpl(ftxui::Component label,
                             ftxui::Component child,
                             bool *show)
         {
             ftxui::CheckboxOption opt;
-            opt.transform = [](ftxui::EntryState s) {
+            opt.transform = [label](ftxui::EntryState s) {
                 auto prefix = ftxui::text(s.state ? "▼ " : "▶ ") | ftxui::notflex;
-                auto t = ftxui::hflow(ftxui::paragraph(s.label)) | ftxui::flex;   // was: text(s.label)
+                auto t = label->Render() | ftxui::flex;
                 if (s.active)  t |= ftxui::bold;
                 if (s.focused) t |= ftxui::inverted;
                 return ftxui::hbox({prefix, t});
             };
             this->Add(ftxui::Container::Vertical({
-                ftxui::Checkbox(label, show, opt),
+                ftxui::Checkbox("", show, opt),
                 ftxui::Maybe(child, show),
             }));
         }

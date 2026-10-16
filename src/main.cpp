@@ -14,7 +14,11 @@
 int main() {
   // https://www.eff.org/deeplinks/2026/10/court-agrees-eff-utahs-vpn-law-demands-technical-impossibility
   // https://www.leadedsolder.com/2026/10/01/rc2026-10-sg1000-forth-port.html
-  // need to test
+  // https://zachlandes.com/trolley-problem/
+  // https://www.derekthompson.org/p/i-know-why-the-mathematicians-weep no header?
+  // https://www.currentaffairs.org/news/why-were-banning-ai no full article
+  // https://philzimmermann.com/EN/essays/WhyIWrotePGP.html
+  // articles to make tests on
  try {
 
     App app = App::Fullscreen();

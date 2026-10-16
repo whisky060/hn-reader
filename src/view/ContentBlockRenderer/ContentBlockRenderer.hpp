@@ -3,6 +3,8 @@
 
 #include <array>
 #include <cctype>
+#include <ftxui/component/app.hpp>
+#include <ftxui/component/component.hpp>
 #include <string_view>
 #include <utility>
 
@@ -15,6 +17,15 @@ class ContentBlockRenderer {
 public:
   static ftxui::Element Render(const ContentBlock& block) {
     return WalkBlock(block);
+  }
+
+  static ftxui::Component ContentComponent(const ContentBlock& block)
+  {
+    auto elem = WalkBlock(block);
+    auto component = ftxui::Renderer([elem]{
+      return elem;
+    });
+    return component;
   }
 
   static ftxui::Element RenderInline(const ContentBlock& block) {

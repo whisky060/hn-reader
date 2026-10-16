@@ -6,6 +6,7 @@
 #include "model/ContentBlock.hpp"
 #include "model/DataBlock.hpp"
 #include "exeptions/scraping_exception.hpp"
+#include "utility/utility.h"
 #include <exception>
 #include <memory>
 #include <string>
@@ -51,7 +52,9 @@ StoryDataBlock AppModel::FetchStorySync(ID id)
 
 CommentDataBlock AppModel::FetchCommentSync(ID id)
 {
+   auto parser = utils::PlainHTMLPArsing();
    nlohmann::json comment = client->FetchID(id);
+   auto text  = comment.value("text", "");
    auto comment_block = CommentDataBlock(
        DataBlockType::Comment,
        comment.value("by", ""),
@@ -59,7 +62,9 @@ CommentDataBlock AppModel::FetchCommentSync(ID id)
        comment.value("kids", std::vector<ID>{}),
        comment.value("parent", 0),
        comment.value("text", ""),
-       comment.value("time", 0));
+       comment.value("time", 0),
+       parser(text)
+   );
 
    return comment_block;
 }

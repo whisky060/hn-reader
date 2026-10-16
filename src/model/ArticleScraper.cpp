@@ -1471,14 +1471,14 @@ void ArticleScraper::PrepDocument()
 
 void ArticleScraper::ParseHTML(std::string html_page) {
 
-    if(isDebugMode)
-        LOG_INFO("html parsing started");
-    doc = lxb_html_document_create();
-    if (doc == nullptr) {
-        FreeResources();
-        throw HTMLParsingException(
-            "couldn't allocate enough space during parsing creation");
-    }
+  if(isDebugMode)
+      LOG_INFO("html parsing started");
+  doc = lxb_html_document_create();
+  if (doc == nullptr) {
+      FreeResources();
+      throw HTMLParsingException(
+          "couldn't allocate enough space during parsing creation");
+  }
 
   auto code = lxb_html_document_parse(doc, (const lxb_char_t *)html_page.data(),
                                       html_page.size());

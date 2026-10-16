@@ -1,8 +1,7 @@
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include "utility/utility.h"
-
-
 
 namespace utils {
 
@@ -21,6 +20,16 @@ namespace utils {
             quoted += "'";
             return quoted;
         }
+    }
+
+    void Trim(std::string &s) {
+      s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+                return !std::isspace(ch);
+              }));
+      s.erase(std::find_if(s.rbegin(), s.rend(),
+                           [](unsigned char ch) { return !std::isspace(ch); })
+                  .base(),
+              s.end());
     }
 
 
@@ -65,15 +74,16 @@ namespace utils {
           return;
 
       #if defined(_WIN32) || defined(_WIN64)
-          ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+        ShellExecuteA(NULL, "open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
       #elif defined(__APPLE__)
-          std::string command = "open " + ShellQuote(url);
-          std::system(command.c_str());
+        std::string command = "open " + ShellQuote(url);
+        std::system(command.c_str());
       #elif defined(__linux__)
-          std::string command = "xdg-open " + ShellQuote(url) + " &";
-          std::system(command.c_str());
+        std::string command = "xdg-open " + ShellQuote(url) + " &";
+        std::system(command.c_str());
       #else
-          std::cerr << "Unsupported operating system." << std::endl;
+        std::cerr << "Unsupported operating system." << std::endl;
       #endif
     }
+
 }

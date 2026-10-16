@@ -3,7 +3,6 @@
 
 #include <functional>
 #include <stdexcept>
-#include <string>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/dom/elements.hpp>
@@ -14,6 +13,7 @@
 #include "concurrency/FetchResult.hpp"
 #include "model/DataBlock.hpp"
 #include "model/app_model.hpp"
+#include "view/ContentBlockRenderer/ContentBlockRenderer.hpp"
 #include "widgets/Spinner/spinner.hpp"
 #include "widgets/Spinner/patterns.hpp"
 #include "widgets/WrapCollapsible/WrapCollapsible.hpp"
@@ -27,7 +27,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
             show = false;
             isLoading = false;
             sub_ = ftxui::Container::Vertical({});
-            commentEntry = WrapCollapsible(comment.text_,sub_,&show);
+            commentEntry = WrapCollapsible(ContentBlockRenderer::ContentComponent(comment.root_),sub_,&show);
             spinner_ = Spinner(spinner_patterns::Dots, 1000ms);
             callback = [this](FetchResult<std::vector<CommentDataBlock>> res)
               {

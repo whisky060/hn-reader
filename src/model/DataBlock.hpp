@@ -3,6 +3,7 @@
 
 #include <nlohmann/json.hpp>
 #include "HNClient.hpp"
+#include "model/ContentBlock.hpp"
 #include <cstdint>
 
 enum class DataBlockType : uint8_t
@@ -60,6 +61,7 @@ struct CommentDataBlock
         ID parent_;
         std::string text_;
         unsigned long time_;
+        ContentBlock root_;
 
         CommentDataBlock() = default;
         CommentDataBlock(DataBlockType type,
@@ -68,14 +70,16 @@ struct CommentDataBlock
                         std::vector<ID> comments,
                         ID parent,
                         std::string text,
-                        unsigned long time
+                        unsigned long time,
+                        ContentBlock root
                         ):
                         type_(type),
                         author_(author),
                         id_(id),
                         parent_(parent),
                         text_(text),
-                        time_(time)
+                        time_(time),
+                        root_(root)
         {
                 comments_ = std::move(comments);
         }
