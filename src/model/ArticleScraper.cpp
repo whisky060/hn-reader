@@ -275,7 +275,7 @@ void ArticleScraper::SimplifyNestedElements(lxb_dom_node_t *articleContent) {
 }
 
 void ArticleScraper::FixRelativeUris(lxb_dom_node_t *articleContent) {
-  // TODO see if ti is actually useful for my case
+
 }
 
 std::string ArticleScraper::GetArticleTitle() {
