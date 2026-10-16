@@ -83,7 +83,7 @@ namespace utils {
                  		blocks.push_back({type, "", GetAttribute(node, "src"), children});
                  		break;
                 	case ContentBlockType::TEXT:
-                 		blocks.push_back({type, GetNodeTextContent(node, true), "", children});
+                 		blocks.push_back({type, GetNodeTextContent(node, false), "", children});
                    		break;
                  	case ContentBlockType::BR:
                  	case ContentBlockType::HR:
@@ -196,7 +196,7 @@ namespace utils {
                tag == "SECTION" || tag == "ASIDE" ||
                tag == "MAIN" || tag == "HEADER" ||
                tag == "FOOTER" || tag == "FIGURE" ||
-               tag == "PICTURE" || tag == "SOURCE")
+               tag == "PICTURE" || tag == "SOURCE" || tag == "HTML")
                 return ContentBlockType::DIV;
             if(tag == "TR")
                 return ContentBlockType::TR;

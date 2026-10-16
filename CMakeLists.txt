@@ -7,13 +7,20 @@ set(BUILD_SHARED_LIBS OFF)
 set(BUILD_STATIC_LIBS ON)
 
 include(FetchContent)
- 
+
 FetchContent_Declare(ftxui
   GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
   GIT_TAG v7.0.0  # Replace with a version, tag, or commit hash
 )
- 
+
 FetchContent_MakeAvailable(ftxui)
+
+FetchContent_Declare(
+  ftxui-image-view
+  GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(ftxui-image-view)
 
 FetchContent_Declare(nlohmann
   GIT_REPOSITORY https://github.com/nlohmann/json
@@ -51,13 +58,20 @@ set(LEXBOR_BUILD_EXAMPLES OFF)
 
 FetchContent_MakeAvailable(lexbor)
 
- 
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_executable(hn-reader ${SOURCES})
 target_include_directories(hn-reader PRIVATE src)
-target_link_libraries(hn-reader PRIVATE ftxui::screen ftxui::dom ftxui::component nlohmann_json::nlohmann_json CURL::libcurl lexbor_static)
+target_link_libraries(hn-reader
+PRIVATE ftxui::screen
+        ftxui::dom
+        ftxui::component
+        ftxui-image-view
+        nlohmann_json::nlohmann_json
+        CURL::libcurl
+        lexbor_static
+        )
 
 add_executable(harness tools/harness.cpp src/model/ArticleScraper.cpp src/utility/utility.cpp)
 target_include_directories(harness PRIVATE src)
 target_link_libraries(harness PRIVATE CURL::libcurl lexbor_static nlohmann_json::nlohmann_json)
-

@@ -55,6 +55,8 @@ CommentDataBlock AppModel::FetchCommentSync(ID id)
    auto parser = utils::PlainHTMLPArsing();
    nlohmann::json comment = client->FetchID(id);
    auto text  = comment.value("text", "");
+   text = "<div>" + text + "</div>";
+
    auto comment_block = CommentDataBlock(
        DataBlockType::Comment,
        comment.value("by", ""),

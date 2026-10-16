@@ -160,7 +160,7 @@ void ArticleScraper::CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBloc
          		blocks.push_back({type, "", GetAttribute(node, "src"), children});
          		break;
         	case ContentBlockType::TEXT:
-         		blocks.push_back({type, GetNodeTextContent(node, true), "", children});
+         		blocks.push_back({type, GetNodeTextContent(node, false), "", children});
            		break;
          	case ContentBlockType::BR:
          	case ContentBlockType::HR:

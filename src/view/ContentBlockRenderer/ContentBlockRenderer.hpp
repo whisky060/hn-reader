@@ -5,12 +5,11 @@
 #include <cctype>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp>
+#include <string>
 #include <string_view>
 #include <utility>
-
+#include <image_view.hpp>
 #include <ftxui/dom/elements.hpp>
-#include <ftxui/dom/flexbox_config.hpp>
-
 #include "model/ContentBlock.hpp"
 
 class ContentBlockRenderer {
@@ -44,9 +43,7 @@ private:
     {
       if(inline_.empty())
         return;
-      blocks_.push_back(ftxui::flexbox(
-        std::move(inline_),
-        ftxui::FlexboxConfig().SetGap(1, 0)));
+      blocks_.push_back(ftxui::flexbox(std::move(inline_)));
       inline_.clear();
     }
 
@@ -78,14 +75,26 @@ private:
       case ContentBlockType::H1:
         dec = dec | ftxui::bold | ftxui::underlined;
         WalkChildren(block,state,dec);
-        return state.Finish();
+        return ftxui::vbox({
+          ftxui::separatorEmpty(),
+          state.Finish(),
+          ftxui::separatorEmpty()
+        });
       case ContentBlockType::H2:
         dec = dec | ftxui::bold;
         WalkChildren(block,state,dec);
-        return state.Finish();
+        return ftxui::vbox({
+          ftxui::separatorEmpty(),
+          state.Finish(),
+          ftxui::separatorEmpty()
+        });
       case ContentBlockType::H3:
         WalkChildren(block,state);
-        return state.Finish();
+        return ftxui::vbox({
+          ftxui::separatorEmpty(),
+          state.Finish(),
+          ftxui::separatorEmpty()
+        });
       case ContentBlockType::P:
         WalkChildren(block,state);
         return ftxui::vbox({
@@ -159,7 +168,7 @@ private:
   {
     WalkState state;
     state.inline_.push_back(
-      ftxui::text(listDots_[depth % listDots_.size()]));
+      ftxui::text(std::string(listDots_[depth % listDots_.size()]) + " "));
     for (const auto& child : block.children) {
       if (child.type == ContentBlockType::UL) {
         state.Flush();
@@ -212,7 +221,7 @@ private:
         WalkInLineChildren(block, state, dec);
         break;
       case ContentBlockType::IMG:
-         state.inline_.push_back(ftxui::text("📸") | ftxui::hyperlink(block.url));
+         state.inline_.push_back(ftxui::image_view(block.url));
         break;
       default:
         state.Flush();
@@ -227,22 +236,30 @@ private:
     ftxui::Decorator dec = ftxui::nothing
   )
   {
-    size_t i = 0, n = text.size();
-     while (i < n) {
-       while (i < n && std::isspace((unsigned char)text[i])) ++i;
-       size_t start = i;
-       while (i < n && !std::isspace((unsigned char)text[i])) ++i;
-       if (start != i) PushWord(text.substr(start, i - start),state,dec);
-     }
-  }
+    std::string s(text);
+    for (char& c : s)
+      if (std::isspace((unsigned char)c))
+        c = ' ';
 
-  static void PushWord(
-    std::string_view word,
-    WalkState& state,
-    ftxui::Decorator dec = ftxui::nothing
-  )
-  {
-    state.inline_.push_back(ftxui::text(word) | dec);
+    size_t first = s.find_first_not_of(' ');
+    if (first == std::string::npos)
+    {
+      if (!state.inline_.empty())
+        state.inline_.push_back(ftxui::text(std::move(s)) | dec);
+      return;
+    }
+    if (state.inline_.empty())
+      s.erase(0, first);
+
+    size_t i = 0, n = s.size();
+    while (i < n)
+    {
+      size_t start = i;
+      while (i < n && s[i] == ' ') ++i;
+      while (i < n && s[i] != ' ') ++i;
+      while (i < n && s[i] == ' ') ++i;
+      state.inline_.push_back(ftxui::text(s.substr(start, i - start)) | dec);
+    }
   }
 
   static void WalkChildren(const ContentBlock& block, WalkState& state, ftxui::Decorator dec = ftxui::nothing)

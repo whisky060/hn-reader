@@ -6,6 +6,7 @@
 #include <memory>
 #include <thread>
 #include <iostream>
+#include <image_view.hpp>
 #include "controller/app_controller.hpp"
 #include "model/app_model.hpp"
 #include "concurrency/Dispatcher.hpp"
@@ -26,6 +27,10 @@ int main() {
     auto model = std::make_shared<AppModel>(dispatcher);
     auto controller = ftxui::Make<AppController>(model);
     ftxui::Loop loop(&app, controller);
+
+    ftxui::setOnImageLoadedCallback([&]() {
+            app.PostEvent(ftxui::Event::Custom);
+    });
 
     while (!loop.HasQuitted())
     {

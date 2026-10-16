@@ -32,7 +32,6 @@ inline ftxui::Component WrapCollapsible(ftxui::Component label,
             opt.transform = [label](ftxui::EntryState s) {
                 auto prefix = ftxui::text(s.state ? "▼ " : "▶ ") | ftxui::notflex;
                 auto t = label->Render() | ftxui::flex;
-                if (s.active)  t |= ftxui::bold;
                 if (s.focused) t |= ftxui::inverted;
                 return ftxui::hbox({prefix, t});
             };
