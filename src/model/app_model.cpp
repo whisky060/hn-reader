@@ -97,7 +97,7 @@ void AppModel::FetchArticle(std::string articleUrl, ArticleCallback callback)
     try
     {
       auto article = self->client->FetchArticle(articleUrl);
-      auto content =  (*self->scraper_)(article);
+      auto content =  (*self->scraper_)(articleUrl,article);
       auto res = FetchResult<ContentBlock>::Success(content);
       self->dispatcher_->Post([callback,res](){ callback(res); });
     } catch (const ScrapingException& e) {

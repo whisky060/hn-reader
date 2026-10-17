@@ -1,6 +1,7 @@
 #ifndef ARTICLESCRAPER_H
 #define ARTICLESCRAPER_H
 
+#include <lexbor/url/url.h>
 #include <lexbor/html/html.h>
 #include <string>
 #include <unordered_map>
@@ -23,6 +24,13 @@ private:
     void CollectBlocks(lxb_dom_node_t *node, std::vector<ContentBlock>& blocks);
     bool IsLeafNode(ContentBlockType type);
     bool IsContainerNode(ContentBlockType type);
+    std::string ComputeBaseURI();
+    std::string ResolveURL();
+    std::string ResolveUrl(const std::string &relative, const std::string &base);
+    static lxb_status_t AppendToString(const lxb_char_t *data, size_t len, void *ctx) {
+        static_cast<std::string *>(ctx)->append(reinterpret_cast<const char *>(data), len);
+        return LXB_STATUS_OK;
+    }
 
     lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
@@ -49,6 +57,7 @@ private:
     std::vector<lxb_dom_node_t *> GetAllNodesWithTag(lxb_dom_node_t *root, std::unordered_set<std::string> tag_names);
     lxb_dom_node_t *GetParent(lxb_dom_node_t *node);
     std::vector<lxb_dom_node_t *> GetChildElements(lxb_dom_node_t *node);
+    std::vector<lxb_dom_node_t *> GetChildrens(lxb_dom_node_t *node);
     std::vector<lxb_dom_node_t *> GetNodes(lxb_dom_node_t *root);
     std::string GetNodeTextContent(lxb_dom_node_t *node, bool trim = false);
     bool IsElementNode(lxb_dom_node_t *node);
@@ -208,6 +217,7 @@ private:
     std::string articleByline;
     std::string articleTitle;
     std::string articleDir;
+    std::string documentURI;
     int nbTopCandidates;
 
     // Readability sieve flags (mirrors Readability.js FLAG_* 0x1|0x2|0x4)
@@ -387,7 +397,7 @@ public:
     ArticleScraper() : doc(nullptr), dom(nullptr) {};
     ArticleScraper(ArticleScraper &other) : doc(other.doc), dom(other.dom) {}
     ~ArticleScraper();
-    ContentBlock operator()(std::string html_page);
+    ContentBlock operator()(std::string pageURL, std::string html_page);
 };
 
 #endif

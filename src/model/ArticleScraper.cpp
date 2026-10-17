@@ -10,11 +10,12 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
-ContentBlock ArticleScraper::operator()(std::string html_page) {
+ContentBlock ArticleScraper::operator()(std::string pageURL,std::string html_page) {
 
     ParseHTML(html_page);
-
+    documentURI = pageURL;
     articleByline = "";
     articleDir = "";
     articleTitle = GetArticleTitle();
@@ -275,7 +276,134 @@ void ArticleScraper::SimplifyNestedElements(lxb_dom_node_t *articleContent) {
 }
 
 void ArticleScraper::FixRelativeUris(lxb_dom_node_t *articleContent) {
+    auto baseURI = ComputeBaseURI();
+    auto toAbsoluteUri = [this, baseURI](std::string uri)
+    {
+      if(baseURI == documentURI && uri.at(0) == '#')
+      {
+        return uri;
+      }
+      return ResolveUrl(uri,baseURI);
+    };
 
+    auto links = GetAllNodesWithTag(articleContent,{"A"});
+    for(auto& link : links)
+    {
+      auto href = GetAttribute(link, "href");
+      if(!href.empty())
+      {
+        // Remove links with javascript: URIs, since
+        // they won't work after scripts have been removed from the page.
+        if(href.find("javascript:") == std::string::npos)
+        {
+          auto childNodes = GetChildrens(link);
+          if(
+            childNodes.size() == 1 &&
+            IsTextNode(childNodes[0])
+          )
+          {
+            auto text = CreateTextNode(GetNodeTextContent(link));
+            auto parent = GetParent(link);
+            ReplaceChild(parent,text,link);
+          }
+          else
+          {
+            auto container = CreateElement("span");
+            while(GetFirstChild(link))
+            {
+              AppendChild(container,GetFirstChild(link));
+            }
+            auto parent = GetParent(link);
+            ReplaceChild(parent,container,link);
+          }
+        }
+        else
+        {
+          SetAttribute(link, "href", toAbsoluteUri(href));
+        }
+      }
+    }
+    auto medias = GetAllNodesWithTag(articleContent,{
+      "img",
+      "picture",
+      "figure",
+      "video",
+      "audio",
+      "source",
+    });
+    for(auto& media : medias)
+    {
+      auto src = GetAttribute(media,"src");
+      auto poster = GetAttribute(media, "poster");
+      auto srcset = GetAttribute(media, "srcset");
+      if(!src.empty())
+      {
+        SetAttribute(media, "src", toAbsoluteUri(src));
+      }
+
+      if(!poster.empty())
+      {
+        SetAttribute(media, "poster", toAbsoluteUri(poster));
+      }
+
+      if(!srcset.empty())
+      {
+        std::string newSrcset;
+        auto last = srcset.cbegin();
+
+        for (std::sregex_iterator it(srcset.begin(), srcset.end(), REGEXPS.at(RegexPattern::SRC_STE_URL)), end;
+             it != end; ++it)
+        {
+            const std::smatch &m = *it;
+
+            newSrcset.append(last, m[0].first);   // text before this match
+            newSrcset += toAbsoluteUri(m[1].str()) + m[2].str() + m[3].str();
+            last = m[0].second;
+        }
+
+        newSrcset.append(last, srcset.cend());
+        SetAttribute(media,"srcset",newSrcset);
+      }
+    }
+}
+
+std::string ArticleScraper::ComputeBaseURI()
+{
+  auto bases = GetElementsByTagName(root, "BASE");
+     if (!bases.empty())
+     {
+         auto href = GetAttribute(bases[0], "href");
+         if (!href.empty())
+         {
+             return ResolveUrl(href, documentURI);  // href can itself be relative
+         }
+     }
+     return documentURI;
+}
+
+
+std::string ArticleScraper::ResolveUrl(const std::string &relative, const std::string &base) {
+
+    lxb_url_parser_t parser;
+    if (lxb_url_parser_init(&parser, nullptr) != LXB_STATUS_OK)
+        return relative;
+
+    std::string out;
+    lxb_url_t *baseUrl = lxb_url_parse(&parser, nullptr,
+        reinterpret_cast<const lxb_char_t *>(base.data()), base.size());
+
+    if (baseUrl) {
+        lxb_url_parser_clean(&parser);   // required before reusing the parser
+        lxb_url_t *url = lxb_url_parse(&parser, baseUrl,
+            reinterpret_cast<const lxb_char_t *>(relative.data()), relative.size());
+        if (url)
+            lxb_url_serialize(url, AppendToString, &out, false);
+    }
+
+    lxb_url_parser_destroy(&parser, false);
+    if (baseUrl) lxb_url_memory_destroy(baseUrl);
+
+    return out.empty() ? relative : out;
 }
 
 std::string ArticleScraper::GetArticleTitle() {
@@ -1683,6 +1811,18 @@ std::vector<lxb_dom_node_t *> ArticleScraper::GetChildElements(lxb_dom_node_t *n
     if (IsElementNode(current)) {
       elements.push_back(current);
     }
+    current = GetNextSibling(current);
+  }
+  return elements;
+}
+std::vector<lxb_dom_node_t*> ArticleScraper::GetChildrens(lxb_dom_node_t *node)
+{
+  std::vector<lxb_dom_node_t *> elements;
+  lxb_dom_node_t *current = GetFirstChild(node);
+  while (current != nullptr) {
+
+    elements.push_back(current);
+
     current = GetNextSibling(current);
   }
   return elements;
