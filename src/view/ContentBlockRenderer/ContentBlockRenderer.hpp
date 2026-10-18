@@ -63,7 +63,8 @@ private:
             tag == ContentBlockType::UL ||
             tag == ContentBlockType::DIV || tag == ContentBlockType::PRE ||
             tag == ContentBlockType::BLOCKQUOTE ||
-            tag == ContentBlockType::CAPTION || tag == ContentBlockType::TR);
+            tag == ContentBlockType::CAPTION || tag == ContentBlockType::TR ||
+            tag == ContentBlockType::IMG);
   }
 
   static ftxui::Element WalkBlock(const ContentBlock& block)
@@ -121,6 +122,8 @@ private:
         return VisitTABLE(block);
       case ContentBlockType::UL:
         return VisitUL(block,0);
+      case ContentBlockType::IMG:
+        return VisitIMG(block);
       default:
         WalkChildren(block,state);
         return state.Finish();
@@ -183,6 +186,16 @@ private:
     return  state.Finish();
   }
 
+  static ftxui::Element VisitIMG(const ContentBlock& block)
+  {
+    auto dimensions = ftxui::Terminal::Size();
+    static const float imageScalingPrecentage{0.70f};
+    return ftxui::image_view(block.url)
+      | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, static_cast<int>(dimensions.dimy * imageScalingPrecentage))
+     // | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, static_cast<int>(dimensions.dimx * imageScalingPrecentage))
+      | ftxui::center;
+  }
+
   static void WalkInLineChildren(
     const ContentBlock& block,
     WalkState& state,
@@ -221,7 +234,8 @@ private:
         WalkInLineChildren(block, state, dec);
         break;
       case ContentBlockType::IMG:
-         state.inline_.push_back(ftxui::image_view(block.url));
+        state.Flush();
+        state.blocks_.push_back(VisitIMG(block));
         break;
       default:
         state.Flush();
@@ -281,6 +295,7 @@ private:
   }
 
   static constexpr std::array<std::string_view, 3> listDots_ = {"•", "◦", "▪"};
+
 };
 
 #endif // CONTENT_BLOCK_RENDERER_HPP
