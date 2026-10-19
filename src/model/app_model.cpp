@@ -145,7 +145,7 @@ void AppModel::FetchComments(std::vector<ID> comments, CommentCallback callback)
           commentBlock.push_back(self->FetchCommentSync(id));
         }
         auto res = FetchResult<std::vector<CommentDataBlock>>::Success(commentBlock);
-        callback(res);
+        self->dispatcher_->Post([callback, res](){callback(res);});
       } catch (...)
       {
         auto res = FetchResult<std::vector<CommentDataBlock>>::Failure(std::current_exception());

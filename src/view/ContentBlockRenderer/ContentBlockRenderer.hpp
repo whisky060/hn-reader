@@ -143,11 +143,62 @@ private:
       }
       else if(child.type == ContentBlockType::TR)
       {
-        rows.push_back(VisitTR(child));
+        rows.push_back(VisitTR(child) | ftxui::border);
+      }
+      else if(child.type == ContentBlockType::TBODY)
+      {
+        rows.push_back(VisitTBody(child));
+      }
+      else if(child.type == ContentBlockType::THEAD)
+      {
+        rows.push_back(VisitTHead(child));
+      }
+      else if(child.type == ContentBlockType::TFOOT)
+      {
+        rows.push_back(VisitTFoot(child));
       }
     }
 
-    return ftxui::vbox(rows) | ftxui::border | ftxui::center;
+
+    return ftxui::vbox(rows)  | ftxui::center;
+  }
+
+  static ftxui::Element VisitTBody(const ContentBlock& block)
+  {
+    ftxui::Elements rows;
+    for(auto& child : block.children)
+    {
+      if(child.type == ContentBlockType::TR)
+      {
+       rows.push_back(VisitTR(child));
+      }
+    }
+    return ftxui::vbox(rows);
+  }
+
+  static ftxui::Element VisitTHead(const ContentBlock& block)
+  {
+    ftxui::Elements rows;
+    for(auto& child : block.children)
+    {
+      if(child.type == ContentBlockType::TR)
+      {
+       rows.push_back(VisitTR(child));
+      }
+    }
+    return ftxui::vbox(rows) | ftxui::bold;
+  }
+  static ftxui::Element VisitTFoot(const ContentBlock& block)
+  {
+    ftxui::Elements rows;
+    for(auto& child : block.children)
+    {
+      if(child.type == ContentBlockType::TR)
+      {
+       rows.push_back(VisitTR(child));
+      }
+    }
+    return ftxui::vbox(rows) | ftxui::bold;
   }
 
   static ftxui::Element VisitTR(const ContentBlock& block)
@@ -189,7 +240,7 @@ private:
   static ftxui::Element VisitIMG(const ContentBlock& block)
   {
     auto dimensions = ftxui::Terminal::Size();
-    static const float imageScalingPrecentage{0.70f};
+    static const float imageScalingPrecentage{0.90f};
     return ftxui::image_view(block.url)
       | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, static_cast<int>(dimensions.dimy * imageScalingPrecentage))
      // | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, static_cast<int>(dimensions.dimx * imageScalingPrecentage))

@@ -9,6 +9,7 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/mouse.hpp>
+#include <string>
 #include <vector>
 #include "concurrency/FetchResult.hpp"
 #include "model/DataBlock.hpp"
@@ -18,12 +19,18 @@
 #include "widgets/Spinner/patterns.hpp"
 #include "widgets/WrapCollapsible/WrapCollapsible.hpp"
 
+enum class CommentEntryState{
+  READY,
+  LOADING,
+  ERROR
+};
 
 inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<void(std::vector<ID>, CommentCallback)> loadSub) {
     class CommentEntryImpl : public ftxui::ComponentBase {
     public:
         CommentEntryImpl(CommentDataBlock comment, std::function<void(std::vector<ID>, CommentCallback)> loadSub) : comment_(comment), loadSub_(loadSub)
         {
+            state_ = CommentEntryState::LOADING;
             show = false;
             isLoading = false;
             sub_ = ftxui::Container::Vertical({});
@@ -41,9 +48,10 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                     auto separator = ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
                     this->sub_->Add(separator);
                   }
+                  state_ = CommentEntryState::READY;
                   return;
                 }
-
+                state_ = CommentEntryState::ERROR;
                 throw std::runtime_error("error in laoding the commets");
               };
             this->Add(commentEntry);
@@ -52,7 +60,15 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
 
         ftxui::Element OnRender() override
         {
-            return commentEntry->Render();
+            return ftxui::vbox({
+              ftxui::hbox({
+                ftxui::text(comment_.author_) | ftxui::notflex,
+                ftxui::text(" - ") | ftxui::notflex,
+                ftxui::text("comments(" + std::to_string(comment_.comments_.size()) + ")"),
+              }),
+              ftxui::separatorCharacter("-") | ftxui::notflex,
+              commentEntry->Render()
+            });
         }
 
         bool OnEvent(ftxui::Event event) override
@@ -92,6 +108,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
         ftxui::Component sub_;
         ftxui::Component commentEntry;
         ftxui::Component spinner_;
+        CommentEntryState state_;
     };
     return ftxui::Make<CommentEntryImpl>(comment, loadSub);
 }

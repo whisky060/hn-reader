@@ -60,9 +60,9 @@ inline std::shared_ptr<BaseView> CommentView(
              std::rethrow_exception(res.GetException());
             }
           };
-          onLoad_(commentIDs,callback);
           this->Add(comments_);
           this->Add(spinner_);
+          onLoad_(commentIDs,callback);
         }
         bool OnEvent(ftxui::Event event) override {
 

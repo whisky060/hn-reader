@@ -1,4 +1,4 @@
-- [ ] Fix relative urls on ArticleScraper
+- [x] Fix relative urls on ArticleScraper
 - [ ] Fix Comment loding bugs + remove banned comments
 - [ ] implement cache for articles and commets
 - [ ] implemet true paralelization in loading comments and articles

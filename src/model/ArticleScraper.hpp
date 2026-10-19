@@ -25,7 +25,6 @@ private:
     bool IsLeafNode(ContentBlockType type);
     bool IsContainerNode(ContentBlockType type);
     std::string ComputeBaseURI();
-    std::string ResolveURL();
     std::string ResolveUrl(const std::string &relative, const std::string &base);
     static lxb_status_t AppendToString(const lxb_char_t *data, size_t len, void *ctx) {
         static_cast<std::string *>(ctx)->append(reinterpret_cast<const char *>(data), len);

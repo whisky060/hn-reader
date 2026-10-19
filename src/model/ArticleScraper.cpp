@@ -91,6 +91,12 @@ ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
         return ContentBlockType::HR;
     if(tag == "SPAN")
         return ContentBlockType::SPAN;
+    if(tag == "THEAD")
+        return ContentBlockType::THEAD;
+    if(tag == "TFOOT")
+        return ContentBlockType::TFOOT;
+    if(tag == "TBODY")
+        return ContentBlockType::TBODY;
 
     return ContentBlockType::TEXT;
 
@@ -127,7 +133,10 @@ bool ArticleScraper::IsContainerNode(ContentBlockType type)
 		type == ContentBlockType::A ||
 		type == ContentBlockType::P ||
 		type == ContentBlockType::BLOCKQUOTE ||
-		type == ContentBlockType::SPAN
+		type == ContentBlockType::SPAN ||
+		type == ContentBlockType::TBODY ||
+		type == ContentBlockType::THEAD ||
+		type == ContentBlockType::TFOOT
 	);
 }
 
@@ -294,7 +303,7 @@ void ArticleScraper::FixRelativeUris(lxb_dom_node_t *articleContent) {
       {
         // Remove links with javascript: URIs, since
         // they won't work after scripts have been removed from the page.
-        if(href.find("javascript:") == std::string::npos)
+        if(href.starts_with("javascript:"))
         {
           auto childNodes = GetChildrens(link);
           if(
