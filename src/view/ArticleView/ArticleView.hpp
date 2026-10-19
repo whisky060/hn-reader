@@ -46,7 +46,9 @@ public:
     loadingSpinner_ = Spinner(spinner_patterns::HnLoading, 1000ms);
     this->Add(loadingSpinner_);
 
-    request([this](FetchResult<ContentBlock> res){
+    request([this, alive = alive_](FetchResult<ContentBlock> res){
+        if(!*alive)
+          return;
         if(res.OK())
         {
           this->CreateArticleContent(res.GetValue());
@@ -60,7 +62,7 @@ public:
         }
     });
   };
-  ~ArticleViewImp() = default;
+  ~ArticleViewImp() override { *alive_ = false; }
 
   std::string GetTitle() const override {
     return articleUrl_.empty() ? "Article" : articleUrl_;
@@ -117,6 +119,7 @@ private:
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
   std::string articleUrl_;
+  std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };
 
 inline std::shared_ptr<BaseView>

@@ -2,6 +2,7 @@
 #define COMMENT_ENTRY_HPP
 
 #include <functional>
+#include <memory>
 #include <stdexcept>
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
@@ -36,8 +37,10 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
             sub_ = ftxui::Container::Vertical({});
             commentEntry = WrapCollapsible(ContentBlockRenderer::ContentComponent(comment.root_),sub_,&show);
             spinner_ = Spinner(spinner_patterns::Dots, 1000ms);
-            callback = [this](FetchResult<std::vector<CommentDataBlock>> res)
+            callback = [this, alive = alive_](FetchResult<std::vector<CommentDataBlock>> res)
               {
+                if(!*alive)
+                  return;
                 if(res.OK())
                 {
                   sub_->DetachAllChildren();
@@ -57,6 +60,8 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
             this->Add(commentEntry);
 
         }
+
+        ~CommentEntryImpl() override { *alive_ = false; }
 
         ftxui::Element OnRender() override
         {
@@ -109,6 +114,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
         ftxui::Component commentEntry;
         ftxui::Component spinner_;
         CommentEntryState state_;
+        std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
     };
     return ftxui::Make<CommentEntryImpl>(comment, loadSub);
 }

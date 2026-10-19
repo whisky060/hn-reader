@@ -34,6 +34,7 @@ private:
     Component curr_view;
     std::shared_ptr<AppModel> model_;
     std::shared_ptr<AbstractTemplate> template_;
+    std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 
 };
 

@@ -68,7 +68,9 @@ inline std::shared_ptr<BaseView> ArticleList(
                 return content | ftxui::center;
             };
 
-            ListCallback callback = [this](FetchResult<std::vector<StoryDataBlock>> res){
+            ListCallback callback = [this, alive = alive_](FetchResult<std::vector<StoryDataBlock>> res){
+               if(!*alive)
+                 return;
                if(res.OK())
                {
                  this->state = ListState::Ready;
@@ -93,6 +95,8 @@ inline std::shared_ptr<BaseView> ArticleList(
             this->Add(list_);
             on_load_(callback);
         }
+
+        ~ImplArticleList() override { *alive_ = false; }
 
         std::string GetTitle() const override { return "Top Stories"; }
 
@@ -163,6 +167,7 @@ inline std::shared_ptr<BaseView> ArticleList(
         std::function<void(std::string)> on_select_;
         std::function<void(std::vector<ID>)> load_comments_;
         ListState state;
+        std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
     };
 
     return std::static_pointer_cast<BaseView>(ftxui::Make<ImplArticleList>(load_comments,on_load, on_select));

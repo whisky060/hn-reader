@@ -44,7 +44,9 @@ inline std::shared_ptr<BaseView> CommentView(
           onLoad_ = onLoad;
           comments_ = ftxui::Container::Vertical({});
           spinner_ = Spinner(spinner_patterns::HnLoading, 1000ms);
-          auto callback  = [this](FetchResult<std::vector<CommentDataBlock>> res){
+          auto callback  = [this, alive = alive_](FetchResult<std::vector<CommentDataBlock>> res){
+            if(!*alive)
+              return;
             if(res.OK())
             {
               for(auto& comment : res.GetValue())
@@ -64,6 +66,9 @@ inline std::shared_ptr<BaseView> CommentView(
           this->Add(spinner_);
           onLoad_(commentIDs,callback);
         }
+
+        ~CommentViewImpl() override { *alive_ = false; }
+
         bool OnEvent(ftxui::Event event) override {
 
           if (event == ftxui::Event::Escape) {
@@ -98,6 +103,7 @@ inline std::shared_ptr<BaseView> CommentView(
         ftxui::Component comments_;
         ftxui::Component spinner_;
         CommentStatus status_;
+        std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
     };
     return std::shared_ptr<BaseView>(new CommentViewImpl(commentIDs,onLoad,exitCallback));
 }

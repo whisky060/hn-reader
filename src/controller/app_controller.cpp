@@ -37,8 +37,10 @@ AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
                                                      {
                                                          model->FetchArticle(articleUrl,
                                                              // error-interception wrapper: same convention as on_load
-                                                             [this, inner](auto res)
+                                                             [this, inner, alive = alive_](auto res)
                                                              {
+                                                                 if(!*alive)
+                                                                     return;
                                                                  try   { inner(res); }
                                                                  catch (...) { HandleException(std::current_exception()); }
                                                              });
@@ -53,7 +55,9 @@ AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
                                         },
                                         [this, model = model_](ListCallback inner)
                                         {
-                                          model->FetchMoreStories([this, inner](FetchResult<std::vector<StoryDataBlock>> res) {
+                                          model->FetchMoreStories([this, inner, alive = alive_](FetchResult<std::vector<StoryDataBlock>> res) {
+                                                 if(!*alive)
+                                                     return;
                                                  try   { inner(res); }
                                                  catch (...) { HandleException(std::current_exception()); }  // → alert
                                              });
@@ -62,7 +66,7 @@ AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
 
 }
 
-AppController::~AppController() {}
+AppController::~AppController() { *alive_ = false; }
 
 Element AppController::OnRender() {
 
