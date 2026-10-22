@@ -1,5 +1,5 @@
 - [x] Fix relative urls on ArticleScraper
-- [ ] Fix Comment loding bugs + remove banned comments
+- [x] Fix Comment loding bugs + remove banned comments
 - [ ] implement cache for articles and commets
 - [ ] implemet true paralelization in loading comments and articles
 - [ ] fix visual bugs in the article render

@@ -1,6 +1,7 @@
 #ifndef COMMENT_ENTRY_HPP
 #define COMMENT_ENTRY_HPP
 
+#include <ftxui/component/app.hpp>
 #include <ftxui/screen/box.hpp>
 #include <cstddef>
 #include <functional>
@@ -49,18 +50,21 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                 {
                   auto comments = res.GetValue();
                   sub_->DetachAllChildren();
-
+                  ftxui::Component firstChild = nullptr;
                   for(auto& comment : comments)
                   {
 
                     auto separator = ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
                     this->sub_->Add(separator);
-                    this->sub_->Add(CommentEntry(comment, this->loadSub_));
+                    auto entry = CommentEntry(comment, this->loadSub_);
+                    this->sub_->Add(entry);
+                    if(!firstChild) firstChild = entry;
                     separator =  ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
                     this->sub_->Add(separator);
                   }
                   replyCount_ = comments.size();
                   state_ = CommentEntryState::LOADED;
+                  sub_->SetActiveChild(firstChild);
                   return;
                 }
                 state_ = CommentEntryState::ERROR;
