@@ -1,6 +1,7 @@
 #ifndef COMMENT_ENTRY_HPP
 #define COMMENT_ENTRY_HPP
 
+#include <ftxui/screen/box.hpp>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -23,6 +24,7 @@
 enum class CommentEntryState{
   READY,
   LOADING,
+  LOADED,
   ERROR
 };
 
@@ -31,7 +33,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
     public:
         CommentEntryImpl(CommentDataBlock comment, std::function<void(std::vector<ID>, CommentCallback)> loadSub) : comment_(comment), loadSub_(loadSub)
         {
-            state_ = CommentEntryState::LOADING;
+            state_ = CommentEntryState::READY;
             show = false;
             isLoading = false;
             sub_ = ftxui::Container::Vertical({});
@@ -47,11 +49,14 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
 
                   for(auto& comment : res.GetValue())
                   {
-                    this->sub_->Add(CommentEntry(comment, this->loadSub_));
+
                     auto separator = ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
                     this->sub_->Add(separator);
+                    this->sub_->Add(CommentEntry(comment, this->loadSub_));
+                    separator =  ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
+                    this->sub_->Add(separator);
                   }
-                  state_ = CommentEntryState::READY;
+                  state_ = CommentEntryState::LOADED;
                   return;
                 }
                 state_ = CommentEntryState::ERROR;
@@ -73,30 +78,54 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
               }),
               ftxui::separatorCharacter("-") | ftxui::notflex,
               commentEntry->Render()
-            });
+            }) | ftxui::reflect(box_);
         }
 
         bool OnEvent(ftxui::Event event) override
         {
 
+          if(event.is_mouse())
+          {
 
-            if(event.is_mouse() && event.mouse().button == ftxui::Mouse::Left && !comment_.comments_.empty())
+            if(event.mouse().button == ftxui::Mouse::Left && event.mouse().motion == ftxui::Mouse::Pressed)
             {
-              loadSub_(comment_.comments_, callback);
-              if(sub_->ChildCount() <= 0)
-                sub_->Add(spinner_);
-              return ftxui::ComponentBase::OnEvent(event);
-            }
+                if(box_.Contain(event.mouse().x, event.mouse().y))
+                {
+                    TakeFocus();
+                    LoadComments();
+                    if(comment_.comments_.size() == 0)
+                      return true;
 
-            if(event == ftxui::Event::Return && !comment_.comments_.empty())
-            {
-              loadSub_(comment_.comments_, callback);
-              if(sub_->ChildCount() <= 0)
-                sub_->Add(spinner_);
-              return ftxui::ComponentBase::OnEvent(event);
+                    return ftxui::ComponentBase::OnEvent(event);
+                }
             }
+          }
 
+          if(event == ftxui::Event::Return)
+          {
+            LoadComments();
+            if(comment_.comments_.size() == 0)
+              return true;
             return ftxui::ComponentBase::OnEvent(event);
+          }
+
+          return ftxui::ComponentBase::OnEvent(event);
+        }
+
+        void LoadComments()
+        {
+          if( state_ == CommentEntryState::LOADED ||
+              state_ == CommentEntryState::LOADING ||
+              show ||
+              comment_.comments_.size() == 0
+          )
+          {
+            return;
+          }
+
+          sub_->Add(spinner_);
+          state_ = CommentEntryState::LOADING;
+          loadSub_(comment_.comments_, callback);
         }
 
         bool Focusable() const override
@@ -114,6 +143,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
         ftxui::Component commentEntry;
         ftxui::Component spinner_;
         CommentEntryState state_;
+        ftxui::Box box_;
         std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
     };
     return ftxui::Make<CommentEntryImpl>(comment, loadSub);

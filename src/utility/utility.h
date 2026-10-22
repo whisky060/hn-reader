@@ -196,7 +196,7 @@ namespace utils {
                tag == "SECTION" || tag == "ASIDE" ||
                tag == "MAIN" || tag == "HEADER" ||
                tag == "FOOTER" || tag == "FIGURE" ||
-               tag == "PICTURE" || tag == "SOURCE" || tag == "HTML")
+               tag == "PICTURE" || tag == "SOURCE" || tag == "HTML" || tag == "BODY")
                 return ContentBlockType::DIV;
             if(tag == "TR")
                 return ContentBlockType::TR;
