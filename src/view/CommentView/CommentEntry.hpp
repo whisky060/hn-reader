@@ -2,6 +2,7 @@
 #define COMMENT_ENTRY_HPP
 
 #include <ftxui/screen/box.hpp>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -36,6 +37,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
             state_ = CommentEntryState::READY;
             show = false;
             isLoading = false;
+            replyCount_ = comment_.comments_.size();
             sub_ = ftxui::Container::Vertical({});
             commentEntry = WrapCollapsible(ContentBlockRenderer::ContentComponent(comment.root_),sub_,&show);
             spinner_ = Spinner(spinner_patterns::Dots, 1000ms);
@@ -45,9 +47,10 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                   return;
                 if(res.OK())
                 {
+                  auto comments = res.GetValue();
                   sub_->DetachAllChildren();
 
-                  for(auto& comment : res.GetValue())
+                  for(auto& comment : comments)
                   {
 
                     auto separator = ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
@@ -56,6 +59,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                     separator =  ftxui::Renderer([](){return ftxui::separatorEmpty() | ftxui::notflex ; });
                     this->sub_->Add(separator);
                   }
+                  replyCount_ = comments.size();
                   state_ = CommentEntryState::LOADED;
                   return;
                 }
@@ -74,7 +78,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
               ftxui::hbox({
                 ftxui::text(comment_.author_) | ftxui::notflex,
                 ftxui::text(" - ") | ftxui::notflex,
-                ftxui::text("comments(" + std::to_string(comment_.comments_.size()) + ")"),
+                ftxui::text("comments(" + std::to_string(replyCount_) + ")"),
               }),
               ftxui::separatorCharacter("-") | ftxui::notflex,
               commentEntry->Render()
@@ -93,7 +97,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                 {
                     TakeFocus();
                     LoadComments();
-                    if(comment_.comments_.size() == 0)
+                    if(replyCount_ == 0)
                       return true;
 
                     return ftxui::ComponentBase::OnEvent(event);
@@ -104,7 +108,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
           if(event == ftxui::Event::Return)
           {
             LoadComments();
-            if(comment_.comments_.size() == 0)
+            if(replyCount_ == 0)
               return true;
             return ftxui::ComponentBase::OnEvent(event);
           }
@@ -117,7 +121,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
           if( state_ == CommentEntryState::LOADED ||
               state_ == CommentEntryState::LOADING ||
               show ||
-              comment_.comments_.size() == 0
+              replyCount_ == 0
           )
           {
             return;
@@ -136,6 +140,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
     private:
         CommentCallback callback;
         CommentDataBlock comment_;
+        std::size_t replyCount_ = 0;
         std::function<void(std::vector<ID>, CommentCallback)> loadSub_;
         bool show;
         bool isLoading;

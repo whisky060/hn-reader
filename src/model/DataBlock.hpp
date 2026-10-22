@@ -62,6 +62,10 @@ struct CommentDataBlock
         std::string text_;
         unsigned long time_;
         ContentBlock root_;
+        bool dead_ = false;
+        bool deleted_ = false;
+
+        bool IsVisible() const { return !dead_ && !deleted_; }
 
         CommentDataBlock() = default;
         CommentDataBlock(DataBlockType type,

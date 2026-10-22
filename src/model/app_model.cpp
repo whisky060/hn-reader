@@ -67,6 +67,8 @@ CommentDataBlock AppModel::FetchCommentSync(ID id)
        comment.value("time", 0),
        parser(text)
    );
+   comment_block.dead_ = comment.value("dead", false);
+   comment_block.deleted_ = comment.value("deleted", false);
 
    return comment_block;
 }
@@ -142,7 +144,10 @@ void AppModel::FetchComments(std::vector<ID> comments, CommentCallback callback)
         std::vector<CommentDataBlock> commentBlock;
         for(auto& id : comments)
         {
-          commentBlock.push_back(self->FetchCommentSync(id));
+          auto comment = self->FetchCommentSync(id);
+          if(!comment.IsVisible())
+            continue;
+          commentBlock.push_back(std::move(comment));
         }
         auto res = FetchResult<std::vector<CommentDataBlock>>::Success(commentBlock);
         self->dispatcher_->Post([callback, res](){callback(res);});
