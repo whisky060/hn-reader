@@ -29,28 +29,18 @@
             "type": "string",
             "pattern": "^#[0-9A-Fa-f]{6}$"
         },
-        "focus" : {
-            "description": "focus color",
+        "focus_background" : {
+            "description": "focus backgorund color",
             "type": "string",
             "pattern": "^#[0-9A-Fa-f]{6}$"
         },
-        "selected" : {
-            "description": "selected color",
-            "type": "string",
-            "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "error" : {
-            "description": "error color",
-            "type": "string",
-            "pattern": "^#[0-9A-Fa-f]{6}$"
-        },
-        "success" : {
-            "description": "success color",
+        "focus_forgruound" : {
+            "description": "focue forground color",
             "type": "string",
             "pattern": "^#[0-9A-Fa-f]{6}$"
         }
     }
 
-   
+
 
 }
