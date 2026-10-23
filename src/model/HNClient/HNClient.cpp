@@ -1,9 +1,12 @@
 #include "HNClient.hpp"
 #include <curl/curl.h>
+#include <memory>
 #include <stdlib.h>
 #include <iostream>
 #include <format>
+#include <string>
 #include "exeptions/scraping_exception.hpp"
+#include "model/Cache/LruCache.hpp"
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -13,12 +16,14 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
 
 HNClient::HNClient()
 {
+    std::size_t cacheSize = 30;
     CURLcode code = curl_global_init(CURL_GLOBAL_ALL);
     if (code != CURLE_OK)
     {
         // TODO make personalized errors
         throw std::runtime_error("ERROR: happened during the set up of curl");
     }
+    cache_ = std::make_shared<LruCache>(cacheSize);
 }
 
 HNClient::~HNClient()
@@ -89,6 +94,12 @@ std::vector<ID> HNClient::CreateIdList(const std::string &json_data)
 
 nlohmann::json HNClient::FetchID(ID id)
 {
+    auto value = cache_->get(std::to_string(id));
+    if(value.has_value())
+    {
+      return nlohmann::json::parse(value.value());
+    }
+
     auto handle = curl_easy_init();
     std::string result_sting = "";
 
@@ -131,11 +142,19 @@ nlohmann::json HNClient::FetchID(ID id)
 
     curl_easy_cleanup(handle);
 
+    cache_->put(std::to_string(id),result_sting);
     return nlohmann::json::parse(result_sting);
 }
 
 std::string HNClient::FetchArticle(std::string article_url)
 {
+
+    auto value = cache_->get(article_url);
+    if(value.has_value())
+    {
+      return value.value();
+    }
+
     auto handle = curl_easy_init();
     std::string response;
     long http_code = 0l;
@@ -227,6 +246,6 @@ std::string HNClient::FetchArticle(std::string article_url)
     }
 
     curl_easy_cleanup(handle);
-
+    cache_->put(article_url,response);
     return response;
 }

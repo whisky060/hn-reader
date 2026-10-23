@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/app.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -10,7 +11,7 @@
 #include "controller/app_controller.hpp"
 #include "model/app_model.hpp"
 #include "concurrency/Dispatcher.hpp"
-
+#include "model/Cache/LruCache.hpp"
 
 int main() {
   // https://www.eff.org/deeplinks/2026/10/court-agrees-eff-utahs-vpn-law-demands-technical-impossibility
