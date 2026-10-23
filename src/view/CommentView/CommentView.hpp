@@ -14,8 +14,8 @@
 #include <memory>
 #include <vector>
 #include "concurrency/FetchResult.hpp"
-#include "model/DataBlock.hpp"
-#include "model/HNClient.hpp"
+#include "model/DataBlock/DataBlock.hpp"
+#include "model/HNClient/HNClient.hpp"
 #include "model/app_model.hpp"
 #include "view/BaseView.hpp"
 #include "widgets/Spinner/patterns.hpp"

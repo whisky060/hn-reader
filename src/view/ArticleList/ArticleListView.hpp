@@ -13,7 +13,7 @@
 #include <vector>
 #include "concurrency/FetchResult.hpp"
 #include "model/app_model.hpp"
-#include "model/DataBlock.hpp"
+#include "model/DataBlock/DataBlock.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
 #include "view/BaseView.hpp"
 #include "widgets/Spinner/spinner.hpp"

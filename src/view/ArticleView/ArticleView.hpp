@@ -3,7 +3,7 @@
 
 #include "concurrency/FetchResult.hpp"
 #include "ftxui/dom/elements.hpp"
-#include "model/ContentBlock.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
 #include "model/app_model.hpp"
 #include "widgets/Scroll/ScrollView.hpp"
 #include "widgets/Spinner/patterns.hpp"

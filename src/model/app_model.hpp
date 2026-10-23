@@ -9,11 +9,11 @@
 #include <memory>
 #include <exception>
 #include <mutex>
-#include "HNClient.hpp"
-#include "model/DataBlock.hpp"
-#include "IndexTracker.hpp"
-#include "model/ArticleScraper.hpp"
-#include "model/ContentBlock.hpp"
+#include "model/HNClient/HNClient.hpp"
+#include "model/DataBlock/DataBlock.hpp"
+#include "model/IndexTracker/IndexTracker.hpp"
+#include "model/ArticleScraper/ArticleScraper.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
 #include "concurrency/Dispatcher.hpp"
 #include "concurrency/ThreadPool.hpp"
 #include "concurrency/FetchResult.hpp"

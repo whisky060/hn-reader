@@ -72,6 +72,6 @@ PRIVATE ftxui::screen
         lexbor_static
         )
 
-add_executable(harness tools/harness.cpp src/model/ArticleScraper.cpp src/utility/utility.cpp)
+add_executable(harness tools/harness.cpp src/model/ArticleScraper/ArticleScraper.cpp src/utility/utility.cpp)
 target_include_directories(harness PRIVATE src)
 target_link_libraries(harness PRIVATE CURL::libcurl lexbor_static nlohmann_json::nlohmann_json)

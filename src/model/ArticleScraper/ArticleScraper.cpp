@@ -1,8 +1,8 @@
-#include "model/ArticleScraper.hpp"
+#include "model/ArticleScraper/ArticleScraper.hpp"
 #include "exeptions/scraping_exception.hpp"
 #include "lexbor/dom/interface.h"
-#include "model/ContentBlock.hpp"
-#include "model/Logger.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
+#include "model/Logger/Logger.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <format>

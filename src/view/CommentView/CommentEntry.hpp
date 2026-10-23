@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 #include "concurrency/FetchResult.hpp"
-#include "model/DataBlock.hpp"
+#include "model/DataBlock/DataBlock.hpp"
 #include "model/app_model.hpp"
 #include "view/ContentBlockRenderer/ContentBlockRenderer.hpp"
 #include "widgets/Spinner/spinner.hpp"

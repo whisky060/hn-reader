@@ -12,7 +12,7 @@
 #include <algorithm>
 #include "exeptions/html_parsing_error.hpp"
 #include "lexbor/dom/interface.h"
-#include "model/ContentBlock.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
 
 class ArticleScraper
 {

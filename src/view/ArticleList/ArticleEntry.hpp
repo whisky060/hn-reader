@@ -10,7 +10,7 @@
 #include <functional>
 #include <vector>
 #include "utility/utility.h"
-#include "model/DataBlock.hpp"
+#include "model/DataBlock/DataBlock.hpp"
 
 class ArticleEntry : public ftxui::ComponentBase
 {

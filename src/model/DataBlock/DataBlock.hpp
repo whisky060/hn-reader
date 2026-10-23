@@ -2,8 +2,8 @@
 #define DATA_BLOCK_H
 
 #include <nlohmann/json.hpp>
-#include "HNClient.hpp"
-#include "model/ContentBlock.hpp"
+#include "model/HNClient/HNClient.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
 #include <cstdint>
 
 enum class DataBlockType : uint8_t

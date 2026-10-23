@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-#include "model/ArticleScraper.hpp"
+#include "model/ArticleScraper/ArticleScraper.hpp"
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
                             void *userp) {

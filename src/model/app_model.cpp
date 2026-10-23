@@ -2,9 +2,9 @@
 #include "concurrency/Dispatcher.hpp"
 #include "concurrency/FetchResult.hpp"
 #include "concurrency/ThreadPool.hpp"
-#include "model/ArticleScraper.hpp"
-#include "model/ContentBlock.hpp"
-#include "model/DataBlock.hpp"
+#include "model/ArticleScraper/ArticleScraper.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
+#include "model/DataBlock/DataBlock.hpp"
 #include "exeptions/scraping_exception.hpp"
 #include "utility/utility.h"
 #include <exception>

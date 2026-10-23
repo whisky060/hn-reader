@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <string>
 #include <cstdlib>
-#include "model/ContentBlock.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
 #include "lexbor/dom/interface.h"
 #include <lexbor/html/html.h>
 #include "exeptions/html_parsing_error.hpp"

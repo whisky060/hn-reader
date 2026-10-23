@@ -10,7 +10,7 @@
 #include <utility>
 #include <image_view.hpp>
 #include <ftxui/dom/elements.hpp>
-#include "model/ContentBlock.hpp"
+#include "model/ContentBlock/ContentBlock.hpp"
 
 class ContentBlockRenderer {
 public:
