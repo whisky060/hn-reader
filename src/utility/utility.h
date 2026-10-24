@@ -2,6 +2,7 @@
 #define UTILITY_H
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
 #include <cstdlib>
 #include "model/ContentBlock/ContentBlock.hpp"
@@ -15,13 +16,20 @@
     #include <windows.h>
 #endif
 
+const std::string appName = "hn-reader";
+const std::string configName = "configuration.json";
+const std::string themeDirName = "themes";
+
 namespace utils {
 
     using date = char*;
     date GetCurrentDate();
     date GetDateFromUnix(long long timestamp);
     void OpenUrl(const std::string& url);
-     void Trim(std::string &s);
+    void Trim(std::string &s);
+    std::filesystem::path GetThemeDir();
+    std::filesystem::path GetConfigFile();
+
     class PlainHTMLPArsing
     {
       public:
@@ -257,6 +265,7 @@ namespace utils {
         lxb_dom_node_t* root;
     };
 }
+
 
 
 #endif

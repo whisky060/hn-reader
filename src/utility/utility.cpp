@@ -1,7 +1,12 @@
 #include <algorithm>
 #include <chrono>
 #include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <string>
 #include "utility/utility.h"
+#include <nlohmann/json.hpp>
 
 namespace utils {
 
@@ -20,6 +25,112 @@ namespace utils {
             quoted += "'";
             return quoted;
         }
+    }
+
+    std::filesystem::path GetConfigFile()
+    {
+      std::function<std::string(const char*)> env = [](const char* envVAR){
+        const char* v = std::getenv(envVAR);
+        return v ? v : "";
+      };
+
+      std::string p;
+      std::filesystem::path pth;
+
+
+
+      #if defined(_WIN32) || defined(_WIN64)
+
+        p = env("APPDATA");
+        if(p.empty())
+        {
+          p = env("USERPROFILE");
+          pth = std::filesystem::path(p) / "AppData" / "Roaming";
+        }
+        else
+        {
+          pth = std::filesystem::path(p);
+        }
+      #else
+        p = std::getenv("XDG_CONFIG_HOME");
+        if(p.empty())
+        {
+          p = env("HOME");
+          pth = std::filesystem::path(p) / ".config";
+        }
+        else
+        {
+          pth = std::filesystem::path(p);
+        }
+
+      #endif
+
+      pth = pth / appName;
+      if(!std::filesystem::exists(pth))
+        std::filesystem::create_directory(pth);
+
+      auto configFile = pth / configName;
+      if(!std::filesystem::exists(configFile))
+      {
+        nlohmann::json content;
+        content["theme"] = "hn dark";
+        std::ofstream file(configFile);
+        if(file.is_open())
+          file << content;
+
+      }
+      return configFile;
+    }
+
+
+    std::filesystem::path GetThemeDir()
+    {
+      std::function<std::string(const char*)> env = [](const char* envVAR){
+        const char* v = std::getenv(envVAR);
+        return v ? v : "";
+      };
+
+      std::string p;
+      std::filesystem::path pth;
+
+
+
+      #if defined(_WIN32) || defined(_WIN64)
+
+        p = env("APPDATA");
+        if(p.empty())
+        {
+          p = env("USERPROFILE");
+          pth = std::filesystem::path(p) / "AppData" / "Roaming";
+        }
+        else
+        {
+          pth = std::filesystem::path(p);
+        }
+      #else
+        p = std::getenv("XDG_CONFIG_HOME");
+        if(p.empty())
+        {
+          p = env("HOME");
+          pth = std::filesystem::path(p) / ".config";
+        }
+        else
+        {
+          pth = std::filesystem::path(p);
+        }
+
+      #endif
+
+      pth = pth / appName;
+      if(!std::filesystem::exists(pth))
+        std::filesystem::create_directory(pth);
+
+      auto themesDir = pth / themeDirName;
+      if(!std::filesystem::exists(pth))
+        std::filesystem::create_directory(pth);
+
+      return themesDir;
+
     }
 
     void Trim(std::string &s) {
