@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <ftxui/screen/color.hpp>
 #include <string>
 #include <cstdlib>
 #include "model/ContentBlock/ContentBlock.hpp"
@@ -29,6 +30,7 @@ namespace utils {
     void Trim(std::string &s);
     std::filesystem::path GetThemeDir();
     std::filesystem::path GetConfigFile();
+    ftxui::Color HexToRGB(std::string color);
 
     class PlainHTMLPArsing
     {

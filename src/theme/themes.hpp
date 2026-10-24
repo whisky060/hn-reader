@@ -2,11 +2,45 @@
 #define THEMES_HPP
 
 
+#include <nlohmann/json.hpp>
+#include "utility/utility.h"
+#include <filesystem>
+#include <fstream>
 #include <ftxui/screen/color.hpp>
 #include <future>
 #include <mutex>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+inline std::vector<std::string> AvailableThemes()
+{
+  static auto themesFun = [](){
+    std::vector<std::string> themes = {
+      "hn light",
+      "hn dark",
+      "dracula",
+      "solarized dark",
+      "solarized light",
+      "ashen",
+      "rose pine",
+      "rose pine dawn"
+    };
+
+    static auto themeDir = utils::GetThemeDir();
+    for(auto& file : std::filesystem::directory_iterator(themeDir))
+    {
+      if(file.path().extension() == ".json")
+      {
+        themes.push_back(file.path().filename());
+      }
+    }
+    return themes;
+  };
 
 
+  return themesFun();
+}
 
 struct Pallet {
   ftxui::Color bg;
@@ -127,7 +161,32 @@ struct Pallet {
       };
     }
 
-    return Pallet();
+    return CreateFromFile(themeName);
+  }
+  static Pallet CreateFromFile(std::string fileName)
+  {
+    fileName+=".json";
+    auto themeDir = utils::GetThemeDir();
+    auto themeFile = themeDir / fileName;
+    std::ifstream file(themeFile);
+    if(file.is_open())
+    {
+      nlohmann::json j;
+      file >> j; // Parse the file content directly into the JSON object
+      file.close();
+      Pallet pallet{
+        .bg = utils::HexToRGB(j.value("background","#FFFFFF")),
+        .fg = utils::HexToRGB(j.value("foreground","#FFFFFF")),
+        .primary = utils::HexToRGB(j.value("primary","#FFFFFF")),
+        .secondary = utils::HexToRGB(j.value("secondary", "#FFFFFF")),
+        .border = utils::HexToRGB(j.value("border", "#FFFFFF")),
+        .focus_bg = utils::HexToRGB(j.value("focus_background", "#FFFFFF")),
+        .focus_fg = utils::HexToRGB(j.value("focus_forgruound", "#FFFFFF"))
+      };
+      return pallet;
+    }
+
+    throw std::runtime_error("impossible to load " + fileName );
   }
 };
 

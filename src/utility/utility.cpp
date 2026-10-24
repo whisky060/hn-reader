@@ -3,6 +3,8 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
 #include <functional>
 #include <string>
 #include "utility/utility.h"
@@ -27,6 +29,19 @@ namespace utils {
         }
     }
 
+    ftxui::Color HexToRGB(std::string color)
+    {
+      unsigned int hexValue = 0;
+      std::stringstream ss;
+      ss << std::hex << color;
+      ss >> hexValue;
+
+      auto r = (hexValue >> 16) & 0xFF; // Shift right 16 bits to get Red
+      auto g = (hexValue >> 8) & 0xFF;  // Shift right 8 bits to get Green
+      auto b = hexValue & 0xFF;         // Mask the last 8 bits to get Blue
+
+      return ftxui::Color(r,g,b);
+    }
     std::filesystem::path GetConfigFile()
     {
       std::function<std::string(const char*)> env = [](const char* envVAR){
