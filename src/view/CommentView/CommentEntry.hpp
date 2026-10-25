@@ -18,6 +18,7 @@
 #include "concurrency/FetchResult.hpp"
 #include "model/DataBlock/DataBlock.hpp"
 #include "model/app_model.hpp"
+#include "theme/themed.hpp"
 #include "view/ContentBlockRenderer/ContentBlockRenderer.hpp"
 #include "widgets/Spinner/spinner.hpp"
 #include "widgets/Spinner/patterns.hpp"
@@ -78,15 +79,22 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
 
         ftxui::Element OnRender() override
         {
-            return ftxui::vbox({
+            auto content = ftxui::vbox({
               ftxui::hbox({
-                ftxui::text(comment_.author_) | ftxui::notflex,
-                ftxui::text(" - ") | ftxui::notflex,
-                ftxui::text("comments(" + std::to_string(replyCount_) + ")"),
+                themed::Text(comment_.author_) | ftxui::notflex,
+                themed::Text(" - ") | ftxui::notflex,
+                themed::Text("comments(" + std::to_string(replyCount_) + ")"),
               }),
-              ftxui::separatorCharacter("-") | ftxui::notflex,
+              themed::SeparatorCharacter("-") | ftxui::notflex,
               commentEntry->Render()
             }) | ftxui::reflect(box_);
+
+            if(Focused())
+            {
+              content = content | themed::Selected();
+            }
+
+            return content;
         }
 
         bool OnEvent(ftxui::Event event) override

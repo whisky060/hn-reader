@@ -1,6 +1,7 @@
 #ifndef ALERT_VIEW_HPP
 #define ALERT_VIEW_HPP
 
+#include "theme/themed.hpp"
 #include <ftxui/component/component.hpp>      // for Maybe, Checkbox, Make, Radiobox, Vertical, Dropdown
 #include <ftxui/component/component_base.hpp> // for Component, ComponentBase
 #include <ftxui/component/component_options.hpp>
@@ -20,15 +21,15 @@ inline ftxui::Component AlertView(std::string alertText, std::function<void()> o
             alertText_(alertText), onClose_(onClose), onConfirm_(onConfirm)
             {
 
-              auto buttonOptions = ftxui::ButtonOption::Simple();
+              auto buttonOptions = themed::ButtonOptions();
               buttonOptions.transform = [](const ftxui::EntryState& s) {
-                  auto content = ftxui::text(s.label);
+                  auto content = themed::Text(s.label);
                   if(s.focused)
                   {
-                    return content | ftxui::border | ftxui::inverted;
+                    return content | themed::Border() | themed::Selected();
                   }
 
-                  return content | ftxui::border;
+                  return content |themed::Border();
               };
               confirmButton_ = ftxui::Button("Confirm", onConfirm, buttonOptions);
               closeButton_ = ftxui::Button("Close", onClose, buttonOptions);
@@ -44,10 +45,10 @@ inline ftxui::Component AlertView(std::string alertText, std::function<void()> o
             auto dimensions = ftxui::Terminal::Size();
 
             return ftxui::vbox(
-              ftxui::paragraphAlignCenter(alertText_),
+              themed::Paragraph(alertText_,themed::Tone::Normal,themed::ParagraphAlignment::Center),
               ftxui::separatorEmpty() | ftxui::flex_grow,
               buttonsRow_->Render()
-            ) | ftxui::bgcolor(ftxui::Color::Black) | ftxui::borderRounded |
+            ) | themed::Border(ftxui::BorderStyle::ROUNDED) |
                 ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, static_cast<int>(dimensions.dimy * screenPercentage_)) |
                 ftxui::size(ftxui::WIDTH, ftxui::EQUAL, static_cast<int>(dimensions.dimx * screenPercentage_));
         }

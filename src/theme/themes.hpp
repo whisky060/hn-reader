@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ftxui/screen/color.hpp>
-#include <future>
+#include <iostream>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -15,31 +15,39 @@
 
 inline std::vector<std::string> AvailableThemes()
 {
-  static auto themesFun = [](){
-    std::vector<std::string> themes = {
-      "hn light",
-      "hn dark",
-      "dracula",
-      "solarized dark",
-      "solarized light",
-      "ashen",
-      "rose pine",
-      "rose pine dawn"
-    };
-
-    static auto themeDir = utils::GetThemeDir();
-    for(auto& file : std::filesystem::directory_iterator(themeDir))
-    {
-      if(file.path().extension() == ".json")
-      {
-        themes.push_back(file.path().filename());
-      }
-    }
-    return themes;
+  std::vector<std::string> themes = {
+    "hn light",
+    "hn dark",
+    "dracula",
+    "solarized dark",
+    "solarized light",
+    "ashen",
+    "rose pine",
+    "rose pine dawn"
   };
+  const auto builtinCount = themes.size();
+
+  try
+  {
+    const auto themeDir = utils::GetThemeDir();
+    for(const auto& file : std::filesystem::directory_iterator(themeDir))
+    {
+      if(!file.is_regular_file() || file.path().extension() != ".json")
+        continue;
+
+      auto themeName = file.path().stem().string();
+      if(themeName.empty())
+        continue;
+
+      themes.push_back(std::move(themeName));
+    }
+  }
+  catch(const std::filesystem::filesystem_error&)
+  {
+  }
 
 
-  return themesFun();
+  return themes;
 }
 
 struct Pallet {
@@ -173,28 +181,59 @@ struct Pallet {
   }
   static Pallet CreateFromFile(std::string fileName)
   {
-    fileName+=".json";
-    auto themeDir = utils::GetThemeDir();
-    auto themeFile = themeDir / fileName;
+    if(fileName.size() > 5 && fileName.ends_with(".json"))
+      fileName.erase(fileName.size() - 5);
+
+    auto themeFile = utils::GetThemeDir() / (fileName + ".json");
     std::ifstream file(themeFile);
-    if(file.is_open())
+    if(!file.is_open())
+      throw std::runtime_error("Unable to open theme file: " + themeFile.string());
+
+    nlohmann::json j;
+    try
     {
-      nlohmann::json j;
-      file >> j; // Parse the file content directly into the JSON object
-      file.close();
-      Pallet pallet{
-        .bg = utils::HexToRGB(j.value("background","#FFFFFF")),
-        .fg = utils::HexToRGB(j.value("foreground","#FFFFFF")),
-        .primary = utils::HexToRGB(j.value("primary","#FFFFFF")),
-        .secondary = utils::HexToRGB(j.value("secondary", "#FFFFFF")),
-        .border = utils::HexToRGB(j.value("border", "#FFFFFF")),
-        .focus_bg = utils::HexToRGB(j.value("focus_background", "#FFFFFF")),
-        .focus_fg = utils::HexToRGB(j.value("focus_forgruound", "#FFFFFF"))
-      };
-      return pallet;
+      file >> j;
+    }
+    catch(const std::exception& e)
+    {
+      throw std::runtime_error("Unable to parse theme file '" + themeFile.string() +
+                               "': " + e.what());
     }
 
-    throw std::runtime_error("impossible to load " + fileName );
+    if(!j.is_object())
+      throw std::runtime_error("Theme file '" + themeFile.string() +
+                               "' must contain a JSON object");
+
+    auto readColor = [&](const char* key) -> ftxui::Color
+    {
+      auto value = j.find(key);
+      if(value == j.end())
+        return ftxui::Color::RGB(255, 255, 255);
+
+      if(!value->is_string())
+        throw std::runtime_error("Theme file '" + themeFile.string() +
+                                 "': field '" + key + "' must be a string");
+
+      try
+      {
+        return utils::HexToRGB(value->get<std::string>());
+      }
+      catch(const std::exception& e)
+      {
+        throw std::runtime_error("Theme file '" + themeFile.string() +
+                                 "': invalid color for '" + key + "': " + e.what());
+      }
+    };
+
+    return Pallet{
+      .bg = readColor("background"),
+      .fg = readColor("foreground"),
+      .primary = readColor("primary"),
+      .secondary = readColor("secondary"),
+      .border = readColor("border"),
+      .focus_bg = readColor("focus_background"),
+      .focus_fg = readColor("focus_foreground")
+    };
   }
 };
 
@@ -204,42 +243,74 @@ class Theme
   public:
     Theme()
     {
-      auto config  = utils::GetConfigFile();
-      std::ifstream file(config);
-      if(file.is_open())
+      try
       {
+        auto config = utils::GetConfigFile();
+        std::ifstream file(config);
+        if(!file.is_open())
+          throw std::runtime_error("Unable to open configuration file: " +
+                                   config.string());
+
         nlohmann::json j;
-        file >> j; // Parse the file content directly into the JSON object
-        auto themeName = j.value("theme","hn dark") ;
+        file >> j;
+
+        auto themeName = j.value("theme", "hn dark");
         pallet_ = Pallet::PalletFactory(themeName);
-        file.close();
+        activeTheme_ = themeName;
       }
-      else
-        pallet_ = Pallet();
+      catch(const std::exception& e)
+      {
+        pallet_ = Pallet::PalletFactory("hn dark");
+        activeTheme_ = "hn dark";
+        std::cerr << "Failed to load theme: " << e.what() << '\n';
+      }
     };
-    ~Theme() = default;
+    ~Theme(){
+      SaveTheme();
+    };
     static Theme& GetInstance()
     {
       static Theme theme;
       return theme;
     }
 
-    Pallet GetPallet()
+    void SaveTheme()
     {
-      std:std::lock_guard<std::mutex> lk(mutex_);
-      return pallet_ ;
+      // TODO save the current active theme in the config file
     }
 
-    void SetPallet(std::string palletName)
+    Pallet GetPallet() const
     {
       std::lock_guard<std::mutex> lk(mutex_);
-      auto pallet = Pallet::PalletFactory(palletName);
-      pallet_ = pallet;
+      return pallet_;
+    }
+
+    bool SetPallet(const std::string& palletName)
+    {
+      try
+      {
+        auto pallet = Pallet::PalletFactory(palletName);
+        std::lock_guard<std::mutex> lk(mutex_);
+        pallet_ = pallet;
+        activeTheme_ = palletName;
+        return true;
+      }
+      catch(const std::exception& e)
+      {
+        return false;
+      }
+    }
+
+    std::string GetActiveTheme() const
+    {
+      std::lock_guard<std::mutex> lk(mutex_);
+      return activeTheme_;
     }
 
   private:
     Pallet pallet_;
-    std::mutex mutex_;
+    std::string activeTheme_ = "hn dark";
+    mutable std::mutex mutex_;
 
 };
 

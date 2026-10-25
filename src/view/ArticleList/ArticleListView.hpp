@@ -14,6 +14,7 @@
 #include "concurrency/FetchResult.hpp"
 #include "model/app_model.hpp"
 #include "model/DataBlock/DataBlock.hpp"
+#include "theme/themed.hpp"
 #include "view/ArticleList/ArticleEntry.hpp"
 #include "view/BaseView.hpp"
 #include "widgets/Spinner/spinner.hpp"
@@ -57,13 +58,13 @@ inline std::shared_ptr<BaseView> ArticleList(
 
             list_ = ftxui::Container::Vertical({});
 
-            auto button_options = ftxui::ButtonOption::Simple();
+            auto button_options = themed::ButtonOptions();
             button_options.transform = [](const ftxui::EntryState &state)
             {
                 auto content = ftxui::text(state.label);
                 if (state.focused)
                 {
-                    return content | ftxui::inverted | ftxui::center;
+                    return content | themed::Selected() | ftxui::center;
                 }
                 return content | ftxui::center;
             };

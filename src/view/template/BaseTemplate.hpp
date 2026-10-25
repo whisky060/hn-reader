@@ -10,6 +10,7 @@
 #include <memory>
 #include <stack>
 #include <vector>
+#include "theme/themed.hpp"
 #include "utility/utility.h"
 #include "view/template/Template.hpp"
 #include "view/BaseView.hpp"
@@ -42,10 +43,10 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
                                             for (const auto& sc : active->GetShortcuts())
                                             {
                                                 if (!first)
-                                                    chips.push_back(ftxui::text("  "));
+                                                    chips.push_back(themed::Text("  "));
                                                   chips.push_back(ftxui::hbox({
-                                                    ftxui::text(sc.key+" : "),
-                                                    ftxui::text(" " + sc.label),
+                                                    themed::Text(sc.key+" : "),
+                                                    themed::Text(" " + sc.label),
                                                 }));
                                                 first = false;
                                             }
@@ -53,7 +54,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
                                         auto left = ftxui::hbox(std::move(chips));
                                         return ftxui::hbox({std::move(left) | ftxui::notflex,
                                                         ftxui::filler(),
-                                                        ftxui::text(time_) | ftxui::notflex
+                                                        themed::Text(time_) | ftxui::notflex
                                       }) | ftxui::notflex;
                                    });
             mainView_ = ftxui::Renderer([&]
@@ -79,7 +80,7 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
         ftxui::Element OnRender() override
         {
             time_ = TrimNewline(utils::GetCurrentDate());
-            return mainContainer->Render();
+            return mainContainer->Render() | themed::Base();
         }
 
         void ChangeView(std::shared_ptr<BaseView> new_view) override

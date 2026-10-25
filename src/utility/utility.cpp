@@ -1,11 +1,12 @@
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
-#include <ftxui/dom/elements.hpp>
-#include <ftxui/screen/color.hpp>
 #include <functional>
+#include <iostream>
+#include <stdexcept>
 #include <string>
 #include "utility/utility.h"
 #include <nlohmann/json.hpp>
@@ -31,16 +32,24 @@ namespace utils {
 
     ftxui::Color HexToRGB(std::string color)
     {
-      unsigned int hexValue = 0;
-      std::stringstream ss;
-      ss << std::hex << color;
-      ss >> hexValue;
+      if (!color.empty() && color.front() == '#')
+        color.erase(color.begin());
 
-      auto r = (hexValue >> 16) & 0xFF; // Shift right 16 bits to get Red
-      auto g = (hexValue >> 8) & 0xFF;  // Shift right 8 bits to get Green
-      auto b = hexValue & 0xFF;         // Mask the last 8 bits to get Blue
+      if (color.size() != 6 ||
+          !std::all_of(color.begin(), color.end(), [](unsigned char c) {
+            return std::isxdigit(c) != 0;
+          }))
+      {
+        throw std::invalid_argument("expected a color in #RRGGBB format");
+      }
 
-      return ftxui::Color(r,g,b);
+      unsigned long hexValue = std::stoul(color, nullptr, 16);
+
+      auto r = (hexValue >> 16) & 0xFF;
+      auto g = (hexValue >> 8) & 0xFF;
+      auto b = hexValue & 0xFF;
+
+      return ftxui::Color(r, g, b);
     }
     std::filesystem::path GetConfigFile()
     {
@@ -82,7 +91,7 @@ namespace utils {
 
       pth = pth / appName;
       if(!std::filesystem::exists(pth))
-        std::filesystem::create_directory(pth);
+        std::filesystem::create_directories(pth);
 
       auto configFile = pth / configName;
       if(!std::filesystem::exists(configFile))
@@ -138,11 +147,11 @@ namespace utils {
 
       pth = pth / appName;
       if(!std::filesystem::exists(pth))
-        std::filesystem::create_directory(pth);
+        std::filesystem::create_directories(pth);
 
       auto themesDir = pth / themeDirName;
-      if(!std::filesystem::exists(pth))
-        std::filesystem::create_directory(pth);
+      if(!std::filesystem::exists(themesDir))
+        std::filesystem::create_directories(themesDir);
 
       return themesDir;
 

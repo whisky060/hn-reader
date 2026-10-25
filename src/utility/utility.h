@@ -3,14 +3,13 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <ftxui/screen/color.hpp>
 #include <string>
 #include <cstdlib>
 #include "model/ContentBlock/ContentBlock.hpp"
 #include "lexbor/dom/interface.h"
 #include <lexbor/html/html.h>
 #include "exeptions/html_parsing_error.hpp"
-
+#include <ftxui/component/component.hpp>
 
 
 #if defined(_WIN32) || defined(_WIN64)

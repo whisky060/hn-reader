@@ -20,12 +20,12 @@ namespace themed {
   {
     return ftxui::color(Palette().primary);
   }
-  
+
   inline ftxui::Decorator Muted()
   {
     return ftxui::color(Palette().secondary);
   }
-  
+
   inline ftxui::Decorator Base()
   {
     auto th = Palette();
@@ -38,7 +38,7 @@ namespace themed {
     return ftxui::bgcolor(th.focus_bg) | ftxui::color(th.focus_fg);
   }
 
-  inline ftxui::Element Text(std::string text, Tone tone)
+  inline ftxui::Element Text(std::string text, Tone tone = Tone::Normal)
   {
     auto th = Palette();
     auto txt = ftxui::text(text);
@@ -50,14 +50,13 @@ namespace themed {
         txt = txt | ftxui::color(th.secondary);
         break;
       case Tone::Normal:
-        txt = txt | ftxui::color(th.fg);
         break;
     }
 
     return txt;
   }
 
-  inline ftxui::Element Paragraph(std::string text, Tone tone, ParagraphAlignment alignment = ParagraphAlignment::Normal )
+  inline ftxui::Element Paragraph(std::string text, Tone tone = Tone::Normal, ParagraphAlignment alignment = ParagraphAlignment::Normal )
   {
     auto th = Palette();
     ftxui::Element txt;
@@ -116,9 +115,10 @@ namespace themed {
   inline ftxui::ButtonOption ButtonOptions() {
     auto opt = ftxui::ButtonOption::Simple();
     opt.transform = [](const ftxui::EntryState& state) {
+      auto content = ftxui::text(state.label);
       if (state.focused)
-        return ftxui::text(state.label) | Selected() | Border();
-      return ftxui::text(state.label) | ftxui::border;
+        content = content | Selected();
+      return content | Border();
     };
     return opt;
   }
