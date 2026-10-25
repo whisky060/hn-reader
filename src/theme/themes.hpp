@@ -57,7 +57,7 @@ struct Pallet {
     if( themeName == "hn light")
     {
 
-      static Pallet personal_light{
+      static Pallet hn_light{
           .bg        = ftxui::Color::RGB(247, 243, 236),    // #F7F3EC
           .fg        = ftxui::Color::RGB(52, 47, 41),       // #342F29
           .primary   = ftxui::Color::RGB(180, 83, 9),       // #B45309
@@ -66,11 +66,13 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(239, 232, 222),    // #EFE8DE
           .focus_fg  = ftxui::Color::RGB(143, 61, 8),       // #8F3D08
       };
+
+      return hn_light;
     }
 
     if(themeName == "hn dark")
     {
-      static Pallet personal_dark{
+      static Pallet hn_dark{
           .bg        = ftxui::Color::RGB(32, 32, 32),       // #202020
           .fg        = ftxui::Color::RGB(231, 226, 218),    // #E7E2DA
           .primary   = ftxui::Color::RGB(255, 159, 67),     // #FF9F43
@@ -79,6 +81,7 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(53, 48, 42),       // #35302A
           .focus_fg  = ftxui::Color::RGB(255, 183, 112),    // #FFB770
       };
+      return hn_dark;
     }
 
     if(themeName == "dracula")
@@ -107,6 +110,7 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(7, 54, 66),
           .focus_fg  = ftxui::Color::RGB(147, 161, 161),
       };
+      return solarized_dark;
     }
 
     if(themeName == "solarized light")
@@ -120,6 +124,7 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(238, 232, 213),
           .focus_fg  = ftxui::Color::RGB(88, 110, 117),
       };
+      return  solarized_light;;
     }
 
     if(themeName == "ashen")
@@ -133,6 +138,7 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(52, 51, 59),
           .focus_fg  = ftxui::Color::RGB(232, 218, 204),
       };
+      return ashen;
     }
 
     if(themeName == "rose pine")
@@ -146,6 +152,7 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(38, 35, 58),    // #26233a
           .focus_fg  = ftxui::Color::RGB(224, 222, 244),  // #e0def4
       };
+      return rose_pine;
     }
 
     if(themeName == "rose pine dawn")
@@ -159,6 +166,7 @@ struct Pallet {
           .focus_bg  = ftxui::Color::RGB(242, 233, 225),  // #f2e9e1
           .focus_fg  = ftxui::Color::RGB(87, 82, 121),    // #575279
       };
+      return rose_pine_dawn;
     }
 
     return CreateFromFile(themeName);
@@ -194,7 +202,21 @@ struct Pallet {
 class Theme
 {
   public:
-    Theme() = default;
+    Theme()
+    {
+      auto config  = utils::GetConfigFile();
+      std::ifstream file(config);
+      if(file.is_open())
+      {
+        nlohmann::json j;
+        file >> j; // Parse the file content directly into the JSON object
+        auto themeName = j.value("theme","hn dark") ;
+        pallet_ = Pallet::PalletFactory(themeName);
+        file.close();
+      }
+      else
+        pallet_ = Pallet();
+    };
     ~Theme() = default;
     static Theme& GetInstance()
     {
@@ -202,7 +224,12 @@ class Theme
       return theme;
     }
 
-    Pallet GetPallet() {return pallet_ ; }
+    Pallet GetPallet()
+    {
+      std:std::lock_guard<std::mutex> lk(mutex_);
+      return pallet_ ;
+    }
+
     void SetPallet(std::string palletName)
     {
       std::lock_guard<std::mutex> lk(mutex_);
