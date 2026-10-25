@@ -16,6 +16,16 @@ namespace themed {
   }
 
 
+  inline ftxui::Decorator Accent()
+  {
+    return ftxui::color(Palette().primary);
+  }
+  
+  inline ftxui::Decorator Muted()
+  {
+    return ftxui::color(Palette().secondary);
+  }
+  
   inline ftxui::Decorator Base()
   {
     auto th = Palette();
@@ -98,11 +108,16 @@ namespace themed {
     return ftxui::separatorCharacter(sequence) | ftxui::color(Palette().border);
   }
 
+
+  inline ftxui::Decorator Border(ftxui::BorderStyle style = ftxui::LIGHT) {
+    return ftxui::borderStyled(style, Palette().border);
+  }
+
   inline ftxui::ButtonOption ButtonOptions() {
     auto opt = ftxui::ButtonOption::Simple();
     opt.transform = [](const ftxui::EntryState& state) {
       if (state.focused)
-        return ftxui::text(state.label) | Selected() | ftxui::border;
+        return ftxui::text(state.label) | Selected() | Border();
       return ftxui::text(state.label) | ftxui::border;
     };
     return opt;
@@ -124,9 +139,6 @@ namespace themed {
     return opt;
   }
 
-  inline ftxui::Decorator Border(ftxui::BorderStyle style = ftxui::LIGHT) {
-    return ftxui::borderStyled(style, Palette().border);
-  }
 
 
 }
