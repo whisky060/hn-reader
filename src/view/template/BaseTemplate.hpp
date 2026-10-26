@@ -117,9 +117,6 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
            	top->TakeFocus();
         }
 
-        void OpenCtrlP()
-        {
-        }
 
         void PushAlert(ftxui::Component alert) override
         {
@@ -137,11 +134,6 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
 
         bool OnEvent(ftxui::Event event) override
         {
-            if (event == ftxui::Event::CtrlP)
-            {
-                OpenCtrlP();
-                return true;
-            }
 
             if (event == ftxui::Event::Escape && mainContainer->ChildCount() > 1)
             {

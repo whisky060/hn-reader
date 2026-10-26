@@ -31,6 +31,7 @@ public:
 private:
     void FetchArticles(){ model_->FetchTopStories(); };
     void HandleException(std::exception_ptr exc);
+    void OpenMenu();
     Component curr_view;
     std::shared_ptr<AppModel> model_;
     std::shared_ptr<AbstractTemplate> template_;

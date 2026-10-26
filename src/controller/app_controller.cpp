@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "model/app_model.hpp"
+#include "view/MenuView/MenuView.hpp"
 #include "view/template/BaseTemplate.hpp"
 #include "view/ArticleList/ArticleListView.hpp"
 #include "view/ArticleView/ArticleView.hpp"
@@ -101,8 +102,21 @@ void AppController::HandleException(std::exception_ptr exc)
 
 }
 
+void AppController::OpenMenu()
+{
+  template_->PushAlert(
+    MenuView([template_ = template_](){ template_->CloseAlert(); })
+  );
+}
+
 bool AppController::OnEvent(Event event)  {
+
     // Handle events
+    if(event == Event::CtrlT)
+    {
+      OpenMenu();
+      return true;
+    }
 
     if(ComponentBase::OnEvent(event))
     {

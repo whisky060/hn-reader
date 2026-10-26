@@ -11,6 +11,7 @@
 #include <image_view.hpp>
 #include <ftxui/dom/elements.hpp>
 #include "model/ContentBlock/ContentBlock.hpp"
+#include "theme/themed.hpp"
 
 class ContentBlockRenderer {
 public:
@@ -74,7 +75,7 @@ private:
     switch (block.type)
     {
       case ContentBlockType::H1:
-        dec = dec | ftxui::bold | ftxui::underlined;
+        dec = dec | ftxui::bold | ftxui::underlined | themed::Accent();
         WalkChildren(block,state,dec);
         return ftxui::vbox({
           ftxui::separatorEmpty(),
@@ -82,7 +83,7 @@ private:
           ftxui::separatorEmpty()
         });
       case ContentBlockType::H2:
-        dec = dec | ftxui::bold;
+        dec = dec | ftxui::bold | themed::Accent();
         WalkChildren(block,state,dec);
         return ftxui::vbox({
           ftxui::separatorEmpty(),
@@ -90,7 +91,8 @@ private:
           ftxui::separatorEmpty()
         });
       case ContentBlockType::H3:
-        WalkChildren(block,state);
+        dec = themed::Accent();
+        WalkChildren(block,state, dec);
         return ftxui::vbox({
           ftxui::separatorEmpty(),
           state.Finish(),
@@ -143,7 +145,7 @@ private:
       }
       else if(child.type == ContentBlockType::TR)
       {
-        rows.push_back(VisitTR(child) | ftxui::border);
+        rows.push_back(VisitTR(child) | themed::Border(ftxui::BorderStyle::LIGHT));
       }
       else if(child.type == ContentBlockType::TBODY)
       {
@@ -206,9 +208,9 @@ private:
     ftxui::Elements col;
     for(const auto& child : block.children)
     {
-      col.push_back(WalkBlock(child) | ftxui::border);
+      col.push_back(WalkBlock(child) | themed::Border(ftxui::BorderStyle::LIGHT));
     }
-    return ftxui::hbox(col) | ftxui::border ;
+    return ftxui::hbox(col) | themed::Border(ftxui::BorderStyle::LIGHT) ;
   }
 
   static ftxui::Element VisitUL(const ContentBlock& block, int depth)
@@ -267,7 +269,7 @@ private:
         PushText(block.text,state,dec);
         break;
       case ContentBlockType::A:
-        WalkInLineChildren(block, state, dec | ftxui::hyperlink(block.url));
+        WalkInLineChildren(block, state, dec | ftxui::hyperlink(block.url) | themed::Accent());
         break;
       case ContentBlockType::I:
         WalkInLineChildren(block, state, dec | ftxui::italic);
