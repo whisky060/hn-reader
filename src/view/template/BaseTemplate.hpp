@@ -68,11 +68,11 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
                                    }
             				);
             mainContainer = mainView_ | ftxui::Modal(alertContainer_, &alertOpen_);
-            this->Add(mainView_);
+
             this->Add(mainContainer);
             this->Add(viewStack_.top());
             this->Add(bottom_bar_);
-            this->Add(alertContainer_);
+
 
 
         }
@@ -122,8 +122,8 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
         {
             alertContainer_->DetachAllChildren();
             alertOpen_ = true;
-            alertContainer_->Add(alert | ftxui::center);
-
+            alertContainer_->Add(alert | ftxui::center | themed::Base());
+            alertContainer_->TakeFocus();
         }
 
         void CloseAlert() override
@@ -140,6 +140,8 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
                 CloseAlert();
                 return true;
             }
+
+
 
 
              if(ftxui::ComponentBase::OnEvent(event))

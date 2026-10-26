@@ -27,6 +27,7 @@ inline ftxui::Component MenuView(std::function<void()> onClose)
         entries = AvailableThemes();
         auto menuOptions = themed::MenuOptions(entries,&selected);
         menu_ = ftxui::Menu(entries,&selected,menuOptions);
+        this->Add(menu_);
       };
       ~MenuViewImpl() = default;
 
@@ -45,8 +46,15 @@ inline ftxui::Component MenuView(std::function<void()> onClose)
       bool OnEvent(ftxui::Event event) override
       {
         if (event == ftxui::Event::Escape) {
-          // TODO save before closing
+          Theme::GetInstance().SaveTheme();
           onClose_();
+          return true;
+        }
+
+        if(event == ftxui::Event::Return)
+        {
+          Theme::GetInstance().SaveTheme();
+          Theme::GetInstance().SetPallet(entries[selected]);
           return true;
         }
 

@@ -11,6 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 inline std::vector<std::string> AvailableThemes()
@@ -276,7 +277,18 @@ class Theme
 
     void SaveTheme()
     {
-      // TODO save the current active theme in the config file
+      try{
+        auto configFile = utils::GetConfigFile();
+        nlohmann::json content;
+        content["theme"] = activeTheme_;
+        std::ofstream file(configFile);
+        if(file.is_open())
+          file << content;
+      }
+      catch(...)
+      {
+
+      }
     }
 
     Pallet GetPallet() const
@@ -285,20 +297,23 @@ class Theme
       return pallet_;
     }
 
-    bool SetPallet(const std::string& palletName)
+    void SetPallet(const std::string& palletName)
     {
-      try
-      {
-        auto pallet = Pallet::PalletFactory(palletName);
-        std::lock_guard<std::mutex> lk(mutex_);
-        pallet_ = pallet;
-        activeTheme_ = palletName;
-        return true;
-      }
-      catch(const std::exception& e)
-      {
-        return false;
-      }
+      std::thread([this,palletName]{
+        try
+        {
+          auto pallet = Pallet::PalletFactory(palletName);
+          std::lock_guard<std::mutex> lk(mutex_);
+          pallet_ = pallet;
+          activeTheme_ = palletName;
+
+        }
+        catch(const std::exception& e)
+        {
+
+        }
+      }).detach();
+
     }
 
     std::string GetActiveTheme() const

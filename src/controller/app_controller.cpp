@@ -118,6 +118,7 @@ bool AppController::OnEvent(Event event)  {
       return true;
     }
 
+
     if(ComponentBase::OnEvent(event))
     {
         return true;
