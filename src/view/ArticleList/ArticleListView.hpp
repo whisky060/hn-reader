@@ -119,13 +119,16 @@ inline std::shared_ptr<BaseView> ArticleList(
                 return first_load_spinner_->Render() | ftxui::center;
             }
 
-            return list_->Render() | ftxui::vscroll_indicator | ftxui::yframe;
+            return list_->Render() | ftxui::vscroll_indicator | ftxui::yframe ;
         }
 
 
         bool OnEvent(ftxui::Event event) override
         {
-            return ftxui::ComponentBase::OnEvent(event);
+          if(state == ListState::FirstLoad)
+              return true;
+
+          return ftxui::ComponentBase::OnEvent(event);
         }
 
         bool Focusable() const override
