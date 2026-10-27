@@ -89,10 +89,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
               commentEntry->Render()
             }) | ftxui::reflect(box_);
 
-            if(Focused())
-            {
-              content = content | themed::Selected();
-            }
+
 
             return content;
         }

@@ -1,6 +1,7 @@
 #ifndef WRAPCOLLAPSIBLE_HPP
 #define WRAPCOLLAPSIBLE_HPP
 
+#include "theme/themed.hpp"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
@@ -33,7 +34,7 @@ inline ftxui::Component WrapCollapsible(ftxui::Component label,
             opt.transform = [label,this](ftxui::EntryState s) {
                 auto prefix = ftxui::text(s.state ? "▼ " : "▶ ") | ftxui::notflex;
                 auto t = label->Render() | ftxui::flex;
-                if (s.focused) t |= ftxui::inverted;
+                if (s.focused) t |= themed::Selected();
                 return ftxui::hbox({prefix, t});
             };
             this->Add(ftxui::Container::Vertical({
