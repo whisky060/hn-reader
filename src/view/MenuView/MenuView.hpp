@@ -25,6 +25,9 @@ inline ftxui::Component MenuView(std::function<void()> onClose)
         onClose_ = onClose;
         selected = 0;
         entries = AvailableThemes();
+        auto active = Theme::GetInstance().GetActiveTheme();
+        for (int i = 0; i < (int)entries.size(); ++i)
+          if (entries[i] == active) { selected = i; break; }
         auto menuOptions = themed::MenuOptions(entries,&selected);
         menu_ = ftxui::Menu(entries,&selected,menuOptions);
         this->Add(menu_);

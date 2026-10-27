@@ -61,7 +61,7 @@ inline std::shared_ptr<BaseView> ArticleList(
             auto button_options = themed::ButtonOptions();
             button_options.transform = [](const ftxui::EntryState &state)
             {
-                auto content = ftxui::text(state.label);
+                auto content = themed::Text(state.label);
                 if (state.focused)
                 {
                     return content | themed::Selected() | ftxui::center;

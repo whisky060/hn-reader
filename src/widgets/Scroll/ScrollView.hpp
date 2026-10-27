@@ -53,20 +53,20 @@ inline ftxui::Component ScrollView(std::function<ftxui::Element()> contentFactor
 			{
 				Node::SetBox(box);
 			 	int viewport = box.y_max - box.y_min;
-        		int content = std::max(children_[0]->requirement().min_y, viewport);
+        int content = std::max(children_[0]->requirement().min_y, viewport);
 
-          		state_->viewPortHeight = viewport;
-            	state_->contentHeight = content;
+        state_->viewPortHeight = viewport;
+        state_->contentHeight = content;
 
-             	int scrollable = std::max(0, content - viewport - 1);
-              	int dy = static_cast<int>(state_->ratio * float(scrollable));
-               	dy = std::clamp(dy, 0, scrollable);
+        int scrollable = std::max(0, content - viewport - 1);
+        int dy = static_cast<int>(state_->ratio * float(scrollable));
+        dy = std::clamp(dy, 0, scrollable);
 
-                ftxui::Box child_box = box;
-                child_box.y_min = box.y_min - dy;
-                child_box.y_max = box.y_min + content - dy;
+        ftxui::Box child_box = box;
+        child_box.y_min = box.y_min - dy;
+        child_box.y_max = box.y_min + content - dy;
 
-                children_[0]->SetBox(child_box);
+        children_[0]->SetBox(child_box);
 			};
 
 			void Render(ftxui::Screen& screen) override

@@ -132,10 +132,10 @@ private:
       case ContentBlockType::BR:
         return ftxui::separatorEmpty();
       case ContentBlockType::HR:
-        return ftxui::separatorLight();
+        return themed::Separator();
       case ContentBlockType::BLOCKQUOTE:
         WalkChildren(block,state);
-        return state.Finish() | ftxui::center | ftxui::borderLight;
+        return state.Finish() | ftxui::center | themed::Border(ftxui::BorderStyle::LIGHT);
       case ContentBlockType::PRE:
         WalkChildren(block,state);
         return state.Finish();

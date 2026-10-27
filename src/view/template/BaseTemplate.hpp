@@ -62,8 +62,8 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
                                   		return ftxui::vbox({
                                        	ActiveRender() | ftxui::flex ,
                                         ftxui::filler() | ftxui::flex,
-                                        ftxui::separatorCharacter("-") | ftxui::notflex,
-                                        bottom_bar_->Render() | ftxui::notflex
+                                        themed::SeparatorCharacter("-") | ftxui::notflex,
+                                        bottom_bar_->Render() | ftxui::notflex | themed::Base()
                                    		});
                                    }
             				);
