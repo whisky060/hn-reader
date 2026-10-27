@@ -53,7 +53,6 @@ inline ftxui::Component MenuView(std::function<void()> onClose)
 
         if(event == ftxui::Event::Return)
         {
-          Theme::GetInstance().SaveTheme();
           Theme::GetInstance().SetPallet(entries[selected]);
           return true;
         }
@@ -64,7 +63,7 @@ inline ftxui::Component MenuView(std::function<void()> onClose)
 
       bool Focusable() const override
       {
-        return true;
+      return true;
       }
 
     private:

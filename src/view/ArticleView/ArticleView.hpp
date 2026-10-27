@@ -110,7 +110,8 @@ public:
 
 private:
   void CreateArticleContent(const ContentBlock& content) {
-    articleContent_ = ScrollView(ContentBlockRenderer::Render(content));
+    articleBlock_ = std::make_shared<ContentBlock>(content);
+    articleContent_ = ScrollView(ContentBlockRenderer::CachedRender(articleBlock_));
     this->Add(articleContent_);
   };
 
@@ -118,6 +119,7 @@ private:
   std::function<void()> exitCallback_;
   ftxui::Component loadingSpinner_;
   ftxui::Component articleContent_;
+  std::shared_ptr<ContentBlock> articleBlock_;
   std::string articleUrl_;
   std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
 };

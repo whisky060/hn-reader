@@ -5,6 +5,8 @@
 #include <cctype>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp>
+#include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -21,11 +23,31 @@ public:
 
   static ftxui::Component ContentComponent(const ContentBlock& block)
   {
-    auto elem = WalkBlock(block);
-    auto component = ftxui::Renderer([elem]{
-      return elem;
-    });
-    return component;
+    return ftxui::Renderer(CachedRender(std::make_shared<ContentBlock>(block)));
+  }
+
+  static std::function<ftxui::Element()> CachedRender(std::shared_ptr<const ContentBlock> block)
+  {
+    struct Cache
+    {
+      std::shared_ptr<const ContentBlock> block;
+      ftxui::Element elem;
+      std::string theme;
+    };
+
+    auto cache = std::make_shared<Cache>();
+    cache->block = std::move(block);
+
+    return [cache]() -> ftxui::Element
+    {
+      auto theme = Theme::GetInstance().GetActiveTheme();
+      if(theme != cache->theme)
+      {
+        cache->elem = WalkBlock(*cache->block);
+        cache->theme = theme;
+      }
+      return cache->elem;
+    };
   }
 
   static ftxui::Element RenderInline(const ContentBlock& block) {

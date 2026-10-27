@@ -18,10 +18,11 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/flexbox_config.hpp>
+#include <functional>
 #include <memory>
 
 
-inline ftxui::Component ScrollView(ftxui::Element content)
+inline ftxui::Component ScrollView(std::function<ftxui::Element()> contentFactory)
 {
 
 	struct ScrollState
@@ -35,6 +36,13 @@ inline ftxui::Component ScrollView(ftxui::Element content)
 	{
 		public:
 			ScrollFrame(ftxui::Element content, std::shared_ptr<ScrollState> state) : ftxui::Node({content}), state_(state) {}
+
+			void SetContent(ftxui::Element content)
+			{
+				if (content != children_[0])
+					children_[0] = std::move(content);
+			}
+
 			void ComputeRequirement() override
 			{
 				children_[0]->ComputeRequirement();
@@ -75,9 +83,10 @@ inline ftxui::Component ScrollView(ftxui::Element content)
 	};
 
 	std::shared_ptr<ScrollState> state = std::make_shared<ScrollState>();
-	ftxui::Element frame = std::make_shared<ScrollFrame>(content, state);
+	auto frame = std::make_shared<ScrollFrame>(contentFactory(), state);
 	auto component = ftxui::CatchEvent(
-    ftxui::Renderer([frame, state] {
+    ftxui::Renderer([frame, contentFactory] {
+        	frame->SetContent(contentFactory());
         	return frame;
     	}),
     	[state](ftxui::Event ev) {

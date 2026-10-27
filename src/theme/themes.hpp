@@ -6,6 +6,8 @@
 #include "utility/utility.h"
 #include <filesystem>
 #include <fstream>
+#include <ftxui/component/app.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/screen/color.hpp>
 #include <iostream>
 #include <mutex>
@@ -278,9 +280,14 @@ class Theme
     void SaveTheme()
     {
       try{
+        std::string activeTheme;
+        {
+          std::lock_guard<std::mutex> lk(mutex_);
+          activeTheme = activeTheme_;
+        }
         auto configFile = utils::GetConfigFile();
         nlohmann::json content;
-        content["theme"] = activeTheme_;
+        content["theme"] = activeTheme;
         std::ofstream file(configFile);
         if(file.is_open())
           file << content;
@@ -303,10 +310,14 @@ class Theme
         try
         {
           auto pallet = Pallet::PalletFactory(palletName);
-          std::lock_guard<std::mutex> lk(mutex_);
-          pallet_ = pallet;
-          activeTheme_ = palletName;
-
+          {
+            std::lock_guard<std::mutex> lk(mutex_);
+            pallet_ = pallet;
+            activeTheme_ = palletName;
+          }
+          SaveTheme();
+          if(auto* app = ftxui::App::Active())
+            app->PostEvent(ftxui::Event::Custom);
         }
         catch(const std::exception& e)
         {

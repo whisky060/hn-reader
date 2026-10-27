@@ -122,7 +122,9 @@ inline std::shared_ptr<AbstractTemplate> BaseTemplate(std::shared_ptr<BaseView> 
         {
             alertContainer_->DetachAllChildren();
             alertOpen_ = true;
-            alertContainer_->Add(alert | ftxui::center | themed::Base());
+            alertContainer_->Add(ftxui::Renderer(alert, [alert] {
+                return alert->Render() | ftxui::center | themed::Base();
+            }));
             alertContainer_->TakeFocus();
         }
 

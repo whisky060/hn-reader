@@ -2,6 +2,6 @@
 - [x] Fix Comment loding bugs + remove banned comments
 - [x] implement cache for articles and commets
 - [ ] implemet true paralelization in loading comments and articles
-- [ ] make a theme selector with static and dynamic themes
+- [x] make a theme selector with static and dynamic themes
 - [ ] fix visual bugs in the article render
 - [ ] make scrolling not lag with huge text
