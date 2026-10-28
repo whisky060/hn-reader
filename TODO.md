@@ -4,4 +4,4 @@
 - [ ] implemet true paralelization in loading comments and articles
 - [x] make a theme selector with static and dynamic themes
 - [ ] fix visual bugs in the article render
-- [ ] make scrolling not lag with huge text
+- [x] make scrolling not lag with huge text

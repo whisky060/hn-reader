@@ -14,6 +14,7 @@
 #include <ftxui/dom/elements.hpp>
 #include "model/ContentBlock/ContentBlock.hpp"
 #include "theme/themed.hpp"
+#include "widgets/Scroll/CullNode.hpp"
 
 class ContentBlockRenderer {
 public:
@@ -265,10 +266,10 @@ private:
   {
     auto dimensions = ftxui::Terminal::Size();
     static const float imageScalingPrecentage{0.90f};
-    return ftxui::image_view(block.url)
+    return CullNode(ftxui::image_view(block.url)
       | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, static_cast<int>(dimensions.dimy * imageScalingPrecentage))
      // | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, static_cast<int>(dimensions.dimx * imageScalingPrecentage))
-      | ftxui::center;
+      | ftxui::center);
   }
 
   static void WalkInLineChildren(
