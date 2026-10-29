@@ -158,40 +158,55 @@ private:
 
   static ftxui::Element VisitTABLE(const ContentBlock& block)
   {
-    ftxui::Elements rows;
+
+    std::vector<ftxui::Elements> rows;
+    ftxui::Element caption = nullptr;
     for(const auto& child : block.children)
     {
       if(child.type == ContentBlockType::CAPTION)
       {
         WalkState state;
         WalkChildren(child,state);
-        rows.push_back(state.Finish() | ftxui::center);
+        caption = state.Finish() | ftxui::center;
       }
       else if(child.type == ContentBlockType::TR)
       {
-        rows.push_back(VisitTR(child) | themed::Border(ftxui::BorderStyle::LIGHT));
+        rows.push_back(VisitTR(child));
       }
       else if(child.type == ContentBlockType::TBODY)
       {
-        rows.push_back(VisitTBody(child));
+        auto row = VisitTBody(child);
+        rows.insert(rows.end(),row.begin(),row.end());
       }
       else if(child.type == ContentBlockType::THEAD)
       {
-        rows.push_back(VisitTHead(child));
+        auto row = VisitTHead(child);
+        rows.insert(rows.end(),row.begin(),row.end());
       }
       else if(child.type == ContentBlockType::TFOOT)
       {
-        rows.push_back(VisitTFoot(child));
+        auto row = VisitTFoot(child);
+        rows.insert(rows.end(),row.begin(),row.end());
       }
     }
+    auto border = ftxui::color(themed::Palette().border);
+    ftxui::Table table(std::move(rows));
+    auto content = table.SelectAll();
+    content.Separator(ftxui::BorderStyle::LIGHT,border);
+    content.Border(ftxui::BorderStyle::LIGHT,border);
 
+    if(caption != nullptr)
+      return ftxui::vbox({
+        caption,
+        table.Render() | ftxui::center
+      });
 
-    return ftxui::vbox(rows)  | ftxui::center | themed::Border();
+    return table.Render() | ftxui::center;
   }
 
-  static ftxui::Element VisitTBody(const ContentBlock& block)
+  static std::vector<ftxui::Elements> VisitTBody(const ContentBlock& block)
   {
-    ftxui::Elements rows;
+    std::vector<ftxui::Elements> rows;
     for(auto& child : block.children)
     {
       if(child.type == ContentBlockType::TR)
@@ -199,42 +214,43 @@ private:
        rows.push_back(VisitTR(child));
       }
     }
-    return ftxui::vbox(rows);
+    return rows;
   }
 
-  static ftxui::Element VisitTHead(const ContentBlock& block)
+  static std::vector<ftxui::Elements> VisitTHead(const ContentBlock& block)
   {
-    ftxui::Elements rows;
+    std::vector<ftxui::Elements> rows;
     for(auto& child : block.children)
     {
       if(child.type == ContentBlockType::TR)
       {
-       rows.push_back(VisitTR(child));
+       rows.push_back(VisitTR(child) | ftxui::bold | themed::Accent());
       }
     }
-    return ftxui::vbox(rows) | ftxui::bold;
+    return rows;
   }
-  static ftxui::Element VisitTFoot(const ContentBlock& block)
+  static std::vector<ftxui::Elements> VisitTFoot(const ContentBlock& block)
   {
-    ftxui::Elements rows;
+    std::vector<ftxui::Elements> rows;
     for(auto& child : block.children)
     {
       if(child.type == ContentBlockType::TR)
       {
-       rows.push_back(VisitTR(child));
+       rows.push_back(VisitTR(child) | ftxui::bold | themed::Accent());
       }
     }
-    return ftxui::vbox(rows) | ftxui::bold;
+    return rows;
   }
 
-  static ftxui::Element VisitTR(const ContentBlock& block)
+  static ftxui::Elements VisitTR(const ContentBlock& block)
   {
     ftxui::Elements col;
     for(const auto& child : block.children)
     {
-      col.push_back(WalkBlock(child) | themed::Border(ftxui::BorderStyle::LIGHT));
+      if(child.type == ContentBlockType::TD)
+        col.push_back(WalkBlock(child) | ftxui::center);
     }
-    return ftxui::hbox(col);
+    return col;
   }
 
   static ftxui::Element VisitUL(const ContentBlock& block, int depth)
@@ -251,7 +267,7 @@ private:
 
   static ftxui::Element VisitLI(const ContentBlock& block, int depth)
   {
-    
+
     WalkState state;
     for (const auto& child : block.children) {
       if (child.type == ContentBlockType::UL) {
