@@ -5,6 +5,7 @@
 #include <cctype>
 #include <ftxui/component/app.hpp>
 #include <ftxui/component/component.hpp>
+#include <ftxui/dom/deprecated.hpp>
 #include <functional>
 #include <memory>
 #include <string>
@@ -12,6 +13,7 @@
 #include <utility>
 #include <image_view.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/table.hpp>
 #include "model/ContentBlock/ContentBlock.hpp"
 #include "theme/themed.hpp"
 #include "widgets/Scroll/CullNode.hpp"
@@ -124,7 +126,6 @@ private:
       case ContentBlockType::P:
         WalkChildren(block,state);
         return ftxui::vbox({
-          ftxui::separatorEmpty(),
           state.Finish()
         });
       case ContentBlockType::DIV:
@@ -185,7 +186,7 @@ private:
     }
 
 
-    return ftxui::vbox(rows)  | ftxui::center;
+    return ftxui::vbox(rows)  | ftxui::center | themed::Border();
   }
 
   static ftxui::Element VisitTBody(const ContentBlock& block)
@@ -233,25 +234,32 @@ private:
     {
       col.push_back(WalkBlock(child) | themed::Border(ftxui::BorderStyle::LIGHT));
     }
-    return ftxui::hbox(col) | themed::Border(ftxui::BorderStyle::LIGHT) ;
+    return ftxui::hbox(col);
   }
 
   static ftxui::Element VisitUL(const ContentBlock& block, int depth)
   {
     ftxui::Elements rows;
-    for (const auto& child : block.children) rows.push_back(VisitLI(child, depth));
+    for (const auto& child : block.children)
+      if(child.type == ContentBlockType::LI)
+        rows.push_back( ftxui::hbox({
+          ftxui::text(std::string(listDots_[depth % listDots_.size()]) + " "),
+          VisitLI(child, depth)
+        }));
     return ftxui::vbox(std::move(rows));
   }
 
   static ftxui::Element VisitLI(const ContentBlock& block, int depth)
   {
+    
     WalkState state;
-    state.inline_.push_back(
-      ftxui::text(std::string(listDots_[depth % listDots_.size()]) + " "));
     for (const auto& child : block.children) {
       if (child.type == ContentBlockType::UL) {
         state.Flush();
-        state.blocks_.push_back(VisitUL(child, depth + 1));
+        state.blocks_.push_back(ftxui::hbox({
+          ftxui::separatorEmpty(),
+          VisitUL(child, depth + 1)
+        }));
       } else if (IsInNewLine(child.type)) {
         state.Flush();
         state.blocks_.push_back(WalkBlock(child));

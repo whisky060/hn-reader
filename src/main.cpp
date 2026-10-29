@@ -1,4 +1,3 @@
-#include <cstddef>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/app.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -11,7 +10,7 @@
 #include "controller/app_controller.hpp"
 #include "model/app_model.hpp"
 #include "concurrency/Dispatcher.hpp"
-#include "model/Cache/LruCache.hpp"
+
 
 int main() {
   // https://www.eff.org/deeplinks/2026/10/court-agrees-eff-utahs-vpn-law-demands-technical-impossibility
@@ -20,6 +19,7 @@ int main() {
   // https://www.derekthompson.org/p/i-know-why-the-mathematicians-weep no header?
   // https://www.currentaffairs.org/news/why-were-banning-ai no full article
   // https://philzimmermann.com/EN/essays/WhyIWrotePGP.html
+  // https://foxio.io/blog/choose-your-backend-three-tls-bugs-in-goahead missing code sections
   // articles to make tests on
  try {
 
