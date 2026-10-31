@@ -1,3 +1,19 @@
+/*
+ * This file is a C++ port of Mozilla Readability.js
+ * (https://github.com/mozilla/readability), adapted for lexbor.
+ *
+ * Readability
+ * Copyright (c) 2010 Arc90 Inc
+ * Copyright (c) 2010-2026 Mozilla and Contributors
+ *
+ * Licensed under the Apache License, Version 2.0. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Changes from the original: ported from JavaScript to C++20, replaced the
+ * DOM implementation with lexbor, and adapted the output to hn-reader's
+ * ContentBlock model.
+ */
+
 #include "model/ArticleScraper/ArticleScraper.hpp"
 #include "exeptions/scraping_exception.hpp"
 #include "lexbor/dom/interface.h"

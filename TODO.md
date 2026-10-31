@@ -3,5 +3,5 @@
 - [x] implement cache for articles and commets
 - [ ] implemet true paralelization in loading comments and articles
 - [x] make a theme selector with static and dynamic themes
-- [ ] fix visual bugs in the article render
+- [x] fix visual bugs in the article render
 - [x] make scrolling not lag with huge text
