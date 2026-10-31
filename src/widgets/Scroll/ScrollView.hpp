@@ -119,8 +119,8 @@ inline ftxui::Component ScrollView(std::function<ftxui::Element()> contentFactor
              // wheel
              if (ev.is_mouse()) {
                  auto m = ev.mouse();
-                 if (m.button == ftxui::Mouse::WheelUp)   return update(-0.005f);
-                 if (m.button == ftxui::Mouse::WheelDown) return update(0.005f);
+                 if (m.button == ftxui::Mouse::WheelUp)   return update(-0.01f);
+                 if (m.button == ftxui::Mouse::WheelDown) return update(0.01f);
              }
 
              return false;

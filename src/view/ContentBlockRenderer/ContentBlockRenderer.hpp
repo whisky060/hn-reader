@@ -316,7 +316,7 @@ private:
         PushText(block.text,state,dec);
         break;
       case ContentBlockType::A:
-        WalkInLineChildren(block, state, dec | ftxui::hyperlink(block.url) | themed::Accent());
+        WalkInLineChildren(block, state, dec | themed::Accent() | ftxui::hyperlink(block.url) );
         break;
       case ContentBlockType::I:
         WalkInLineChildren(block, state, dec | ftxui::italic);

@@ -36,7 +36,7 @@ public:
                                                  themed::Text(" - ") | ftxui::notflex,
                                                  themed::Text(std::format("Score: {}", article_.score_)) | ftxui::notflex,
                                                  themed::Text(" - ") | ftxui::notflex,
-                                                 themed::Text(std::format("Url: {}", article_.url_)) | ftxui::notflex,  //| ftxui::hyperlink(article_.url_),
+                                                 themed::Text(std::format("Url: {}", article_.url_)) | ftxui::notflex,
                                                  themed::Text(" - "),
                                                  themed::Text(std::format("Comments({})", article_.descendants_)) | ftxui::notflex}),
 
