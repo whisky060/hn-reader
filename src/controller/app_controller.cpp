@@ -32,6 +32,7 @@ AppController::AppController(std::shared_ptr<AppModel> model): ComponentBase()
                                         },
                                         [this, model = model_](std::string articleUrl)
                                         {
+                                          
                                           auto articleView = ArticleView(
                                                      // request (higher-order): view calls this ONCE in its ctor, passing its handler
                                                      [model, articleUrl, this](ArticleCallback inner)

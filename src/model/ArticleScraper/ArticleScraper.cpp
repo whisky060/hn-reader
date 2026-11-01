@@ -1341,11 +1341,11 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element, std::string tag
       // If there are not very many commas, and the number of
       // non-paragraph elements is more than paragraphs or other
       // ominous signs, remove the element.
-      auto p = GetElementsByTagName(node, "P").size();
-      auto img = GetElementsByTagName(node, "IMG").size();
-      auto li = (int)GetElementsByTagName(node, "LI").size() - 100;
-      auto input = GetElementsByTagName(node, "INPUT").size();
-      auto headingDensity = GetTextDensity(node, {
+      int p = GetElementsByTagName(node, "P").size();
+      int img = GetElementsByTagName(node, "IMG").size();
+      int li = static_cast<int>(GetElementsByTagName(node, "LI").size()) - 100;
+      int input = GetElementsByTagName(node, "INPUT").size();
+      int headingDensity = GetTextDensity(node, {
                                                      "H1",
                                                      "H2",
                                                      "H3",
@@ -1421,7 +1421,7 @@ void ArticleScraper::CleanConditionally(lxb_dom_node_t *element, std::string tag
           }
         }
 
-        auto li_count = GetElementsByTagName(node, "LI").size();
+        int li_count = GetElementsByTagName(node, "LI").size();
         if (img == li_count)
           return false;
       }
@@ -2088,8 +2088,8 @@ lxb_dom_node_t *ArticleScraper::GetNextNode(lxb_dom_node_t *node, bool ignoreSel
   if (!ignoreSelfAndKids && GetFirstChildElement(node))
     return GetFirstChildElement(node);
 
-  if (GetNextSibling(node))
-    return GetNextSibling(node);
+  if (GetNextElementSibling(node))
+    return GetNextElementSibling(node);
 
   // move up the parent chain *and* find a sibling
   // (because this is depth-first traversal, we will have already
@@ -2161,6 +2161,15 @@ void ArticleScraper::AppendChild(lxb_dom_node_t *parent, lxb_dom_node_t *child)
 // Insert newChild before refChild under parent
 void ArticleScraper::InsertBefore(lxb_dom_node_t *parent, lxb_dom_node_t *newChild, lxb_dom_node_t *refChild)
 {
+  if (parent == nullptr || newChild == nullptr)
+  return;
+
+  if (refChild == nullptr) 
+  {
+    AppendChild(parent, newChild);
+    return;
+  }
+
   if (parent == nullptr || newChild == nullptr || refChild == nullptr)
     return;
 

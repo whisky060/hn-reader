@@ -15,6 +15,15 @@ some features where not tested in all operating systems (MAC especially)
 - Multiple built-in themes and support for custom themes
 
 
+## Limitations
+
+- videos, giffs and pdf are not supported
+- some websites posted on hacker news may not be rendered correctly
+- coding section in articles most of the time are not rendered correctly doe to the fact
+  that are not embedded in real coding sections so are treated as regular text
+- in image-heavy websites so lag may be experienced
+- strange HTML combinations are not rendered correctly
+
 ## Requirements
 
 - CMake 3.14 or newer
@@ -118,4 +127,3 @@ See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the full notices and
 [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt) for the Apache License 2.0
 text.
 
-This repository contains source code only;
