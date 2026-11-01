@@ -22,6 +22,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ftxui-image-view)
 
+set_target_properties(tiv PROPERTIES INTERFACE_LINK_LIBRARIES "")
+
+if(TARGET ftxui-imageview-example)
+  set_target_properties(ftxui-imageview-example PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
+
 FetchContent_Declare(nlohmann
   GIT_REPOSITORY https://github.com/nlohmann/json
   GIT_TAG v3.12.0  # Replace with a version, tag, or commit hash

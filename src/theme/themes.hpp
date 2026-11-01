@@ -16,6 +16,10 @@
 #include <thread>
 #include <vector>
 
+#ifdef RGB
+#undef RGB
+#endif
+
 inline std::vector<std::string> AvailableThemes()
 {
   std::vector<std::string> themes = {

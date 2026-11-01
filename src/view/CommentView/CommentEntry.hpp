@@ -28,7 +28,7 @@ enum class CommentEntryState{
   READY,
   LOADING,
   LOADED,
-  ERROR
+  FAILED
 };
 
 inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<void(std::vector<ID>, CommentCallback)> loadSub) {
@@ -68,7 +68,7 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                   sub_->SetActiveChild(firstChild);
                   return;
                 }
-                state_ = CommentEntryState::ERROR;
+                state_ = CommentEntryState::FAILED;
                 throw std::runtime_error("error in laoding the commets");
               };
             this->Add(commentEntry);
