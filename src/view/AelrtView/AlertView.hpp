@@ -29,7 +29,7 @@ inline ftxui::Component AlertView(std::string alertText, std::function<void()> o
                     return content | themed::Border() | themed::Selected();
                   }
 
-                  return content |themed::Border();
+                  return content | themed::Border();
               };
               confirmButton_ = ftxui::Button("Confirm", onConfirm, buttonOptions);
               closeButton_ = ftxui::Button("Close", onClose, buttonOptions);

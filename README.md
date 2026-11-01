@@ -15,6 +15,18 @@ some features where not tested in all operating systems (MAC especially)
 - Multiple built-in themes and support for custom themes
 
 
+### Article List
+![article list](docs/images/article_list_img.png)
+
+### Article Example
+![article example](docs/images/article_img.png)
+
+### User Commets
+![commets example](docs/images/commets_view_img.png)
+
+### Image Example
+![iamge example](docs/images/image_example_img.png)
+
 ## Limitations
 
 - videos, giffs and pdf are not supported
@@ -112,6 +124,16 @@ Custom themes are JSON files placed in the configuration directory:
 
 See [`themes/color_scheme.json`](themes/color_scheme.json) for the expected format.
 
+## How Does It Work?
+
+Content of the [Hacker News](https://news.ycombinator.com/) website is fetched throug their official APIs https://github.com/hackernews/api.
+
+Articles are fetch using the link returned by the APIs. The main content is extracted using a port of the [Mozilla Redability algorith](https://github.com/mozilla/readability) ported in C++ using [lexbor](https://lexbor.com/) as HTML DOM helper.
+
+The resulting HTML is parsed again and converted to a minimalistic subset of HTML used then in the [ftxui](https://github.com/ArthurSonzogni/FTXUI) framework to format the article to make it more readable than plain text.
+
+The same procedure, with the exception of content extraction, is used for rendering comments from the users.
+
 ## License
 
 Original code in this repository is licensed under the [MIT License](LICENSE).
@@ -126,4 +148,3 @@ original licenses:
 See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the full notices and
 [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt) for the Apache License 2.0
 text.
-
