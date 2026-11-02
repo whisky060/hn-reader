@@ -64,6 +64,31 @@ cmake --build build -j
 ./build/hn-reader
 ```
 
+## Debugging the article scraper
+
+The `harness` target is a small standalone tool used to debug
+`ArticleScraper` without launching the full TUI. It fetches the page
+with `curl`, runs it through the scraper pipeline with debug logging
+enabled, and prints the scraper logs to stdout (progress and errors go
+to stderr).
+
+```sh
+cmake --build build --target harness
+./build/harness "<url>"
+```
+
+The `harness-article` target renders the same scrape result in a full
+terminal UI by reusing the app's real `ArticleView` (scrolling, Esc to
+exit, Ctrl+O to open the url in a browser), so it is useful to debug
+the rendered output rather than the scraper pipeline. Scraping runs
+synchronously before the UI starts; a failed scrape is reported on
+stderr and the tool exits.
+
+```sh
+cmake --build build --target harness-article
+./build/harness-article "<url>"
+```
+
 ## Image support
 
 Article images are rendered with `ftxui-image-view-async`, which decodes images

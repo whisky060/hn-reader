@@ -409,7 +409,7 @@ private:
     };
 
 public:
-    ArticleScraper() : doc(nullptr), dom(nullptr) {};
+    ArticleScraper(bool debug = false) : doc(nullptr), dom(nullptr), isDebugMode(debug) {};
     ArticleScraper(ArticleScraper &other) : doc(other.doc), dom(other.dom) {}
     ~ArticleScraper();
     ContentBlock operator()(std::string pageURL, std::string html_page);

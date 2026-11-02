@@ -65,6 +65,8 @@ inline ftxui::Component CommentEntry(CommentDataBlock comment, std::function<voi
                   }
                   replyCount_ = comments.size();
                   state_ = CommentEntryState::LOADED;
+                  if(replyCount_ == 0)
+                      show = false;
                   sub_->SetActiveChild(firstChild);
                   return;
                 }
