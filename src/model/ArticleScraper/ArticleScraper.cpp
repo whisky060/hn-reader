@@ -42,7 +42,7 @@ ContentBlock ArticleScraper::operator()(std::string pageURL,std::string html_pag
     flags_ = FLAG_STRIP_UNLIKELYS | FLAG_WEIGHT_CLASSES | FLAG_CLEAN_CONDITIONALLY;
     charThreshold_ = DEFAULT_CHAR_THRESHOLD;
     attempts_.clear();
-
+    UnwrapNoScriptImages();
     RemoveScripts();
     PrepDocument();
     auto articleContent = GrabArticle(nullptr);
@@ -88,7 +88,7 @@ void ArticleScraper::FixLeazyImages(lxb_dom_node_t* root)
       if(std::regex_search(src, parts, REGEXPS.at(RegexPattern::B64_DATA_URL)))
       {
         if(parts[1] == "image/svg+xml")
-          return;
+          continue;
 
         auto strCouldRemoved = false;
         auto attributes = GetAttributes(elem);
@@ -126,7 +126,7 @@ void ArticleScraper::FixLeazyImages(lxb_dom_node_t* root)
       className.find("lazy") == std::string::npos
     )
     {
-      return;
+      continue;
     }
     auto attributes = GetAttributes(elem);
     for(int i = 0; i < attributes.size() ; i++)
@@ -158,7 +158,7 @@ void ArticleScraper::FixLeazyImages(lxb_dom_node_t* root)
           SetAttribute(elem, copyTo, attr.second);
         }
         else if(tagName == "FIGURE" &&
-          GetAllNodesWithTag(elem, {"IMG", "PICTTURE"}).size() == 0)
+          GetAllNodesWithTag(elem, {"IMG", "PICTURE"}).size() == 0)
         {
           auto img = CreateElement("img");
           SetAttribute(img, copyTo, attr.second);
@@ -1782,7 +1782,105 @@ void ArticleScraper::FreeResources()
  *
  *
  **/
-void ArticleScraper::UnwrapNoScriptImages() {}
+void ArticleScraper::UnwrapNoScriptImages() {
+  auto imgs = GetElementsByTagName(root,"img");
+  for(auto img : imgs)
+  {
+    auto attributes = GetAttributes(img);
+    bool keep = false;
+    for(int i = 0; i< attributes.size() ; i++)
+    {
+      auto attr = attributes[i];
+      if(attr.first == "src" ||
+      attr.first == "srcset" ||
+      attr.first == "data-src" ||
+      attr.first == "data-srcset")
+      {
+        keep = true;
+        break;
+      }
+
+      static const std::regex imageExtRe(R"(\.(jpg|jpeg|png|webp))",
+                                         std::regex_constants::icase);
+      if (std::regex_search(attr.second, imageExtRe)) {
+        keep = true;
+        break;            // stop scanning this element's attributes
+      }
+    }
+    if(!keep)
+    {
+      RemoveNode(img);
+    }
+  }
+  auto noscripts = GetElementsByTagName(root, "noscript");
+  for(auto& noscript : noscripts)
+  {
+
+    if(!IsSingleImage(noscript))
+    {
+      continue;
+    }
+    auto tmp = CreateElement("div");
+    SetInnerHtml(tmp, GetInnerHtml(noscript));
+    auto prevElement = GetPrevElementSibling(noscript);
+    if(prevElement && IsSingleImage(prevElement))
+    {
+      auto prevImg = prevElement;
+      if(GetTagName(prevImg) != "IMG")
+      {
+        auto imgs = GetElementsByTagName(prevElement,"IMG");
+        prevImg = imgs.empty() ?  nullptr : imgs[0] ;
+      }
+      auto elems = GetElementsByTagName(tmp,"IMG");
+      auto newImg = elems.empty() ?  nullptr : elems[0];
+      auto attributs = GetAttributes(prevImg);
+      for(int i = 0; i < attributs.size(); i++)
+      {
+        auto attr = attributs[i];
+        if(attr.second == "")
+          continue;
+
+        static const std::regex imageExtRe(R"(\.(jpg|jpeg|png|webp))",
+                                           std::regex_constants::icase);
+        if (attr.first == "src" ||
+            attr.first == "srcset" ||
+            std::regex_search(attr.second, imageExtRe))
+        {
+            if (HasAttribute(newImg, attr.first) && GetAttribute(newImg, attr.first) == attr.second) {
+                continue;
+            }
+        }
+
+        auto attrName = attr.first;
+        if(HasAttribute(newImg,attrName))
+        {
+          attrName = "data-old-" + attrName;
+        }
+        SetAttribute(newImg,attrName,attr.second);
+    }
+  }
+    auto parent = GetParent(noscript);
+    ReplaceChild(parent,GetFirstChildElement(tmp), prevElement);
+  }
+}
+
+bool ArticleScraper::IsSingleImage(lxb_dom_node_t* node)
+{
+  while (node) {
+    if(GetTagName(node) == "IMG")
+      return true;
+    auto text = GetNodeTextContent(node);
+    Trim(text);
+    auto children = GetChildElements(node);
+    if( children.size() != 1 || text != "")
+      return false;
+    if(children.empty())
+      return false;
+    node = children[0];
+  }
+
+  return false;
+}
 
 ArticleScraper::~ArticleScraper() { FreeResources(); }
 

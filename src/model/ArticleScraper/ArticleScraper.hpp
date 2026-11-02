@@ -81,7 +81,7 @@ private:
     bool IsElementNode(lxb_dom_node_t *node);
     bool IsTextNode(lxb_dom_node_t *node);
     bool IsValidByLine(lxb_dom_node_t *node, std::string &matchString);
-
+    bool IsSingleImage(lxb_dom_node_t* node);
 
 
     // Get tag name (uppercase, e.g. "DIV")
