@@ -28,15 +28,13 @@ public:
 
     ftxui::Element OnRender() override
     {
-        auto content = ftxui::vbox({ftxui::text(article_.title_) | ftxui::notflex,
+        auto content = ftxui::vbox({ftxui::text(article_.title_) | ftxui::notflex | themed::Accent(),
         							themed::Separator(),
                                     ftxui::hbox({themed::Text(article_.author_) | ftxui::notflex,
                                                  themed::Text(" - ") | ftxui::notflex,
                                                  themed::Text(utils::GetDateFromUnix(article_.time_)) | ftxui::notflex,
                                                  themed::Text(" - ") | ftxui::notflex,
                                                  themed::Text(std::format("Score: {}", article_.score_)) | ftxui::notflex,
-                                                 themed::Text(" - ") | ftxui::notflex,
-                                                 themed::Text(std::format("Url: {}", article_.url_)) | ftxui::notflex,
                                                  themed::Text(" - "),
                                                  themed::Text(std::format("Comments({})", article_.descendants_)) | ftxui::notflex}),
 
