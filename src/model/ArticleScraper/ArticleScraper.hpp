@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <regex>
+#include <utility>
 #include <vector>
 #include <functional>
 #include <algorithm>
@@ -49,6 +50,7 @@ private:
 
     lxb_dom_element_t *GrabArticle(lxb_dom_node_t *page);
     void UnwrapNoScriptImages();
+    void FixLeazyImages(lxb_dom_node_t* root);
     void FreeResources();
     std::string GetArticleTitle();
 
@@ -66,6 +68,7 @@ private:
     void PostProcessContent(lxb_dom_node_t* articleContent);
     void CleanClasses(lxb_dom_node_t* node);
     std::string GetNodeInfo(lxb_dom_node_t* node);
+    std::vector<std::pair<std::string, std::string>> GetAttributes(lxb_dom_node_t* node);
 
     // helpers
     std::vector<lxb_dom_node_t *> GetElementsByTagName(lxb_dom_node_t *root, const std::string &tag_name);

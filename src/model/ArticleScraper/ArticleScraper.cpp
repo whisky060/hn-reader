@@ -19,13 +19,16 @@
 #include "lexbor/dom/interface.h"
 #include "model/ContentBlock/ContentBlock.hpp"
 #include "model/Logger/Logger.hpp"
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <format>
 #include <math.h>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 ContentBlock ArticleScraper::operator()(std::string pageURL,std::string html_page) {
@@ -56,6 +59,115 @@ ContentBlock ArticleScraper::operator()(std::string pageURL,std::string html_pag
     return result;
 }
 
+std::vector<std::pair<std::string, std::string>> ArticleScraper::GetAttributes(lxb_dom_node_t* node)
+{
+  std::vector<std::pair<std::string, std::string>> out;
+  if (!IsElementNode(node)) return out;
+
+  auto *element = lxb_dom_interface_element(node);
+  for (auto *a = lxb_dom_element_first_attribute(element); a;
+    a = lxb_dom_element_next_attribute(a)) {
+    size_t nl = 0, vl = 0;
+    auto *n = lxb_dom_attr_qualified_name(a, &nl);
+    auto *v = lxb_dom_attr_value(a, &vl);
+    out.emplace_back(std::string(reinterpret_cast<const char *>(n), nl),
+                      v ? std::string(reinterpret_cast<const char *>(v), vl) : "");
+  }
+  return out;
+}
+
+void ArticleScraper::FixLeazyImages(lxb_dom_node_t* root)
+{
+  auto nodes  = GetAllNodesWithTag(root, { "IMG", "PICTURE", "FIGURE" });
+  for(auto& elem : nodes)
+  {
+    if(HasAttribute(elem, "src"))
+    {
+      auto src = GetAttribute(elem, "src");
+      std::smatch parts;
+      if(std::regex_search(src, parts, REGEXPS.at(RegexPattern::B64_DATA_URL)))
+      {
+        if(parts[1] == "image/svg+xml")
+          return;
+
+        auto strCouldRemoved = false;
+        auto attributes = GetAttributes(elem);
+        for(int i = 0; i < attributes.size(); i++)
+        {
+          auto attr = attributes[i];
+          if( attr.first == "src")
+            continue;
+
+          static const std::regex imageExtRe(R"(\.(jpg|jpeg|png|webp))",
+                                             std::regex_constants::icase);
+
+          if (std::regex_search(attr.second, imageExtRe)) {
+              strCouldRemoved = true;
+              break;
+          }
+        }
+
+        if(strCouldRemoved)
+        {
+          auto b64starts = parts[0].length();
+          auto b64length = src.size() - b64starts;
+          if(b64length < 133)
+          {
+            RemoveAttribute(elem,"src");
+          }
+        }
+      }
+    }
+    auto className = GetNodeClass(elem);
+    std::transform(className.begin(), className.end(), className.begin(),
+        [](auto c) { return std::tolower(c); });
+    if((HasAttribute(elem,"src") ||
+      (HasAttribute(elem, "srcset") && GetAttribute(elem, "srcset") != "null")) &&
+      className.find("lazy") == std::string::npos
+    )
+    {
+      return;
+    }
+    auto attributes = GetAttributes(elem);
+    for(int i = 0; i < attributes.size() ; i++)
+    {
+      auto attr = attributes[i];
+      if(attr.first == "src" ||
+      attr.first == "srcset" ||
+      attr.first == "alt")
+      {
+        continue;
+      }
+
+
+      static const std::regex srcsetLikeRe(R"(\.(jpg|jpeg|png|webp)\s+\d)");
+      static const std::regex srcLikeRe(R"(^\s*\S+\.(jpg|jpeg|png|webp)\S*\s*$)");
+
+      std::string copyTo;   // empty == null
+
+      if (std::regex_search(attr.second, srcsetLikeRe)) {
+          copyTo = "srcset";
+      } else if (std::regex_search(attr.second, srcLikeRe)) {
+          copyTo = "src";
+      }
+      if(!copyTo.empty())
+      {
+        auto tagName = GetTagName(elem);
+        if(tagName == "IMG" || tagName == "PICTURE")
+        {
+          SetAttribute(elem, copyTo, attr.second);
+        }
+        else if(tagName == "FIGURE" &&
+          GetAllNodesWithTag(elem, {"IMG", "PICTTURE"}).size() == 0)
+        {
+          auto img = CreateElement("img");
+          SetAttribute(img, copyTo, attr.second);
+          AppendChild(elem, img);
+        }
+      }
+    }
+  }
+}
 
 ContentBlockType ArticleScraper::GetContentBlockType(std::string& tag)
 {
@@ -1118,6 +1230,7 @@ void ArticleScraper::PrepArticle(lxb_dom_node_t *articleContent)
 
     CleanStyles(articleContent);
     MarkDataTables(articleContent);
+    FixLeazyImages(articleContent);
     CleanConditionally(articleContent, "FORM");
     CleanConditionally(articleContent, "FIELDSET");
     Clean(articleContent, "OBJECT");
@@ -2164,7 +2277,7 @@ void ArticleScraper::InsertBefore(lxb_dom_node_t *parent, lxb_dom_node_t *newChi
   if (parent == nullptr || newChild == nullptr)
   return;
 
-  if (refChild == nullptr) 
+  if (refChild == nullptr)
   {
     AppendChild(parent, newChild);
     return;

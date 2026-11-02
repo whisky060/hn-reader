@@ -22,7 +22,10 @@ int main() {
   // https://foxio.io/blog/choose-your-backend-three-tls-bugs-in-goahead missing code sections
   // articles to make tests on
  try {
-
+    const int maxImages{50};
+    const int maxCacheSize{300};
+    const int resaizedCacheMaxSize{1000};
+    const int charCacheSize{60000};
     App app = App::Fullscreen();
     auto dispatcher = std::make_shared<Dispatcher>();
     auto model = std::make_shared<AppModel>(dispatcher);
@@ -32,6 +35,16 @@ int main() {
     ftxui::setOnImageLoadedCallback([&]() {
             app.PostEvent(ftxui::Event::Custom);
     });
+    // Keep the image caches comfortably above the worst reachable
+    // working set (50 concurrent loads; ~4000+ char tiles per rendered
+    // image on a 2000px-wide photo) so LRU eviction while scrolling can
+    // never hit.
+    setImageCacheMaxSize(maxCacheSize);
+    setImageResizeCacheMaxSize(resaizedCacheMaxSize);
+    setImageCharCacheMaxSize(charCacheSize);
+    setMaxConcurrentImageLoads(maxImages);
+
+
 
     while (!loop.HasQuitted())
     {
