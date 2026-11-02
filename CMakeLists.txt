@@ -10,7 +10,7 @@ include(FetchContent)
 
 FetchContent_Declare(ftxui
   GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI
-  GIT_TAG v7.0.0  # Replace with a version, tag, or commit hash
+  GIT_TAG d120f349b7e7b50584ea79a75a2523a5a66a087f # v7.0.0
 )
 
 FetchContent_MakeAvailable(ftxui)
@@ -18,7 +18,7 @@ FetchContent_MakeAvailable(ftxui)
 FetchContent_Declare(
   ftxui-image-view
   GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
-  GIT_TAG main
+  GIT_TAG 1501b3263789b9b0a4aaa61143d78e02d48ad550 # main (pinned 2026-11-02)
 )
 FetchContent_MakeAvailable(ftxui-image-view)
 
@@ -30,7 +30,7 @@ endif()
 
 FetchContent_Declare(nlohmann
   GIT_REPOSITORY https://github.com/nlohmann/json
-  GIT_TAG v3.12.0  # Replace with a version, tag, or commit hash
+  GIT_TAG 55f93686c01528224f448c19128836e7df245f72 # v3.12.0
 )
 
 FetchContent_MakeAvailable(nlohmann)
@@ -55,7 +55,7 @@ find_package(curl) # probably with CONFIG REQUIRED
 
 FetchContent_Declare(lexbor
   GIT_REPOSITORY https://github.com/lexbor/lexbor
-  GIT_TAG v3.0.0
+  GIT_TAG 2ae88a1c6b5261830eff73ee12bb3cdf805f3cfe # v3.0.0
 )
 
 set(LEXBOR_BUILD_SHARED OFF)
