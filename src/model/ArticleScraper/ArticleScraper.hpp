@@ -117,7 +117,7 @@ private:
 
     // Depth-first traversal (skip self if ignoreSelfAndKids=true)
     lxb_dom_node_t *GetNextNode(lxb_dom_node_t *node, bool ignoreSelfAndKids = false);
-
+    lxb_dom_node_t* NextNode(lxb_dom_node_t* node);
     // Get ancestor chain (up to maxDepth, 0 = unlimited)
     std::vector<lxb_dom_node_t *> GetAncestors(lxb_dom_node_t *node, size_t maxDepth = 0);
 
@@ -388,7 +388,7 @@ private:
         {RegexPattern::PREV_LINK, std::regex("(prev|earl|old|new|<|«)", std::regex::icase)},
         {RegexPattern::TOKENIZE, std::regex("\\W+", std::regex::icase)},
         {RegexPattern::WHITESPACE, std::regex("^\\s*$")},
-        {RegexPattern::HAS_CONTENT, std::regex("^\\s*$")},
+        {RegexPattern::HAS_CONTENT, std::regex("\\S$")},
         {RegexPattern::HASH_URL, std::regex("^#.+")},
         {RegexPattern::SRC_STE_URL, std::regex("(\\S+)(\\s+[\\d.]+[xw])?(\\s*(?:,|$))", std::regex::icase)},
         {RegexPattern::B64_DATA_URL, std::regex("^data:\\s*([^\\s;,]+)\\s*;\\s*base64\\s*,", std::regex::icase)},
