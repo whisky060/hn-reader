@@ -43,6 +43,13 @@ some features where not tested in all operating systems (MAC especially)
 - Git and network access during the first configure (dependencies are downloaded by CMake)
 - ImageMagick or GraphicsMagick (optional; needed to render article images)
 
+On Windows, you must use the same compiler toolchain that this project's CMake
+build is configured with: the MSYS2 UCRT64 MinGW-w64
+`g++` compiler with the `MinGW Makefiles` generator. Other compilers and
+toolchains (MSVC, other MinGW variants, Clang) are not supported.
+
+### Dependencies
+
 The following dependencies are fetched automatically by `CMakeLists.txt`:
 
 - FTXUI 7.0.0
@@ -54,8 +61,7 @@ The following dependencies are fetched automatically by `CMakeLists.txt`:
 ## Build
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
+cmake --build build 
 ```
 
 ## Run
@@ -73,7 +79,6 @@ enabled, and prints the scraper logs to stdout (progress and errors go
 to stderr).
 
 ```sh
-cmake --build build --target harness
 ./build/harness "<url>"
 ```
 
@@ -85,7 +90,6 @@ synchronously before the UI starts; a failed scrape is reported on
 stderr and the tool exits.
 
 ```sh
-cmake --build build --target harness-article
 ./build/harness-article "<url>"
 ```
 
