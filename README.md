@@ -1,19 +1,17 @@
 # hn-reader
 
-A terminal reader for Hacker News, written in C++20 with [FTXUI](https://github.com/ArthurSonzogni/FTXUI).
+A Linux terminal reader for Hacker News, written in C++20 with [FTXUI](https://github.com/ArthurSonzogni/FTXUI).
 
-
-> NOTE: this is a personal project so it is not actively maintained also 
-some features where not tested in all operating systems (MAC especially)
+> NOTE: this is a personal project, so it is not actively maintained.
 
 ## Features
 
 - Browse the current top stories from the Hacker News API
 - Read articles in the terminal or in a browser
 - Browse comment threads
-- Render images inside the terminal (requires ImageMagick or GraphicsMagick)
+- Render images inside the terminal (using native JPEG/PNG/WebP support when
+  available, with ImageMagick or GraphicsMagick as a fallback)
 - Multiple built-in themes and support for custom themes
-
 
 ### Article List
 ![article list](docs/images/article_list_img.png)
@@ -21,27 +19,37 @@ some features where not tested in all operating systems (MAC especially)
 ### Article Example
 ![article example](docs/images/article_img.png)
 
-### User Commets
-![commets example](docs/images/commets_view_img.png)
+### User Comments
+![comments example](docs/images/comments_view_img.png)
 
 ### Image Example
-![iamge example](docs/images/image_example_img.png)
+![image example](docs/images/image_example_img.png)
 
 ## Limitations
 
-- videos, giffs and pdf are not supported
-- some websites posted on hacker news may not be rendered correctly
-- coding section in articles most of the time are not rendered correctly doe to the fact
-  that are not embedded in real coding sections so are treated as regular text
-- in image-heavy websites so lag may be experienced
-- strange HTML combinations are not rendered correctly
+- The [CMake file](CMakeLists.txt) works only for Linux
+- Videos, GIFs, and PDFs are not supported
+- Some websites posted on Hacker News may not be rendered correctly
+- Code sections in articles are often not rendered correctly because they are
+  not embedded in real code blocks, so they are treated as regular text
+- Some lag may be experienced on image-heavy websites
+- Unusual HTML combinations are not rendered correctly
 
 ## Requirements
 
-- CMake 3.14 or newer
+- CMake 3.24 or newer
 - A C++20 compiler
-- Git and network access during the first configure (dependencies are downloaded by CMake)
-- ImageMagick or GraphicsMagick (optional; needed to render article images)
+- Git and network access during the first configure (dependencies are downloaded
+  by CMake)
+- ImageMagick or GraphicsMagick (optional; fallback for image formats without
+  native CImg support)
+  - ImageMagick (fallback):
+  - Debian/Ubuntu: `sudo apt install imagemagick`
+  - Fedora: `sudo dnf install ImageMagick`
+  - Arch: `sudo pacman -S imagemagick`
+
+- Optional: libjpeg, libpng, and libwebp development packages for native image
+  decoding
 
 On Windows, you must use the same compiler toolchain that this project's CMake
 build is configured with: the MSYS2 UCRT64 MinGW-w64
@@ -61,7 +69,7 @@ The following dependencies are fetched automatically by `CMakeLists.txt`:
 ## Build
 
 ```sh
-cmake --build build 
+cmake --build build
 ```
 
 ## Run
@@ -98,32 +106,31 @@ stderr and the tool exits.
 Article images are rendered with `ftxui-image-view-async`, which decodes images
 with CImg.
 
-By default this project builds CImg without its native libjpeg/libpng backends.
-For JPEG/PNG and most other formats, CImg therefore delegates decoding to an
-external ImageMagick or GraphicsMagick binary. If neither is available, the app
-still runs, but article images will not render.
+During configuration, CMake looks for the system libjpeg, libpng, and libwebp
+libraries. When found, CImg is built with its native decoders enabled, so JPEG,
+PNG, and WebP images are decoded without external tools. This happens
+automatically; no extra CMake flags are needed.
 
-- ImageMagick (recommended):
+If a decoder is not available, CImg falls back to an external ImageMagick or
+GraphicsMagick binary. If neither is available, the app still runs, but images
+in that format will not render.
+
+- ImageMagick (fallback):
   - Debian/Ubuntu: `sudo apt install imagemagick`
   - Fedora: `sudo dnf install ImageMagick`
   - Arch: `sudo pacman -S imagemagick`
-  - macOS: `brew install imagemagick`
-  - Windows: `winget install ImageMagick.ImageMagick` (ImageMagick 7; make sure
-    `magick.exe` is on `PATH`)
+
 - GraphicsMagick (`gm`) can be used instead.
 
-Remote image URLs are downloaded with `curl`, then `wget` (PowerShell is also
-tried on Windows). `curl` ships with Windows 10+ and is normally available on
-Linux/macOS.
+Remote image URLs are downloaded with the vendored libcurl (`cimg_use_curl`).
 
-### Native libjpeg/libpng support
+### Native JPEG/PNG/WebP support
 
-Instead of relying on ImageMagick at runtime, CImg can decode JPEG/PNG natively.
-Define `cimg_use_jpeg` and/or `cimg_use_png` when compiling
-`ftxui-image-view`, and link the corresponding libjpeg/libpng libraries (libpng
-also requires zlib). This project does not enable those flags by default. If
-only one is enabled, the other format still falls back to ImageMagick or
-GraphicsMagick. GIF always requires one of those external tools.
+The build enables CImg's `cimg_use_jpeg`, `cimg_use_png`, and `cimg_use_webp`
+definitions automatically when the corresponding system libraries are found
+(libpng also requires zlib). If only some of them are available, the missing
+formats fall back to ImageMagick or GraphicsMagick. GIF always requires one of
+those external tools.
 
 ## Keybindings
 
@@ -146,22 +153,32 @@ Press `Ctrl+T` to switch between the built-in themes:
 `hn light`, `hn dark`, `dracula`, `solarized dark`, `solarized light`,
 `ashen`, `rose pine`, `rose pine dawn`.
 
-Custom themes are JSON files placed in the configuration directory:
+Custom themes are JSON files placed in the configuration directory. The file
+name without the `.json` extension becomes the theme name.
 
 - Linux: `$XDG_CONFIG_HOME/hn-reader/themes` or `~/.config/hn-reader/themes`
-- Windows: `%APPDATA%\hn-reader\themes`
-
-See [`themes/color_scheme.json`](themes/color_scheme.json) for the expected format.
+- 
+See [`themes/color_scheme.json`](themes/color_scheme.json) for the expected
+format. It uses the keys `background`, `foreground`, `primary`, `secondary`,
+`border`, `focus_background`, and `focus_foreground`, with colors written as
+`#RRGGBB`.
 
 ## How Does It Work?
 
-Content of the [Hacker News](https://news.ycombinator.com/) website is fetched throug their official APIs https://github.com/hackernews/api.
+Content from the [Hacker News](https://news.ycombinator.com/) website is fetched
+through the official [Hacker News API](https://github.com/HackerNews/API).
 
-Articles are fetch using the link returned by the APIs. The main content is extracted using a port of the [Mozilla Redability algorith](https://github.com/mozilla/readability) ported in C++ using [lexbor](https://lexbor.com/) as HTML DOM helper.
+Articles are fetched using the link returned by the API. The main content is
+extracted with a C++ port of the [Mozilla Readability
+algorithm](https://github.com/mozilla/readability), using
+[lexbor](https://lexbor.com/) as the HTML DOM helper.
 
-The resulting HTML is parsed again and converted to a minimalistic subset of HTML used then in the [ftxui](https://github.com/ArthurSonzogni/FTXUI) framework to format the article to make it more readable than plain text.
+The resulting HTML is parsed again and converted to a minimal subset of HTML,
+which is then used by [FTXUI](https://github.com/ArthurSonzogni/FTXUI) to format
+the article and make it more readable than plain text.
 
-The same procedure, with the exception of content extraction, is used for rendering comments from the users.
+The same procedure, except for content extraction, is used to render user
+comments.
 
 ## License
 

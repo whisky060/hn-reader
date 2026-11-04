@@ -36,13 +36,6 @@ endif()
 # (e.g. WebP served on a URL ending in .jpeg). Everything here is
 # optional: on a host without these libraries no macros are defined and
 # the previous external-tool fallback behavior is kept.
-# Homebrew roots so macOS builds find brew-installed image libraries
-# without extra cmake flags; harmless on other platforms. Must come
-# before the find_package() calls below.
-if(APPLE)
-  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew /usr/local)
-endif()
-
 find_package(JPEG QUIET)
 find_package(PNG QUIET)
 find_package(PkgConfig QUIET)
@@ -76,20 +69,13 @@ FetchContent_Declare(nlohmann
 
 FetchContent_MakeAvailable(nlohmann)
 
-
 FetchContent_Declare(curl
 URL https://curl.se/download/curl-8.21.0.tar.gz
 DOWNLOAD_EXTRACT_TIMESTAMP true
 OVERRIDE_FIND_PACKAGE # this one
 )
 
-if(WIN32)
-  set(CURL_USE_SCHANNEL ON)
-else()
-  set(CURL_USE_OPENSSL ON)
-endif()
-
-
+set(CURL_USE_OPENSSL ON)
 
 FetchContent_MakeAvailable(curl)
 find_package(curl) # probably with CONFIG REQUIRED
@@ -112,7 +98,6 @@ set(LEXBOR_BUILD_TESTS OFF)
 set(LEXBOR_BUILD_EXAMPLES OFF)
 
 FetchContent_MakeAvailable(lexbor)
-
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_executable(hn-reader ${SOURCES})

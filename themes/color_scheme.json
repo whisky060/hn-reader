@@ -30,12 +30,12 @@
             "pattern": "^#[0-9A-Fa-f]{6}$"
         },
         "focus_background" : {
-            "description": "focus backgorund color",
+            "description": "focus background color",
             "type": "string",
             "pattern": "^#[0-9A-Fa-f]{6}$"
         },
-        "focus_forgruound" : {
-            "description": "focue forground color",
+        "focus_foreground" : {
+            "description": "focus foreground color",
             "type": "string",
             "pattern": "^#[0-9A-Fa-f]{6}$"
         }
