@@ -2,7 +2,7 @@
 
 A Linux terminal reader for Hacker News, written in C++20 with [FTXUI](https://github.com/ArthurSonzogni/FTXUI).
 
-> NOTE: this is a personal project, so it is not actively maintained.
+> NOTE: this is a personal project, so it is not actively maintained. If there is some problem with licences contact me so we can resolve the issue
 
 ## Features
 
